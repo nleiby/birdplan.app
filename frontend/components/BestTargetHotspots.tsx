@@ -4,6 +4,7 @@ import { useHotspotTargets } from "providers/hotspot-targets";
 import { useTrip } from "providers/trip";
 import { useModal } from "providers/modals";
 import FilterTabs from "components/FilterTabs";
+import Icon from "components/Icon";
 import { HOTSPOT_TARGET_CUTOFF } from "lib/config";
 
 type Props = {
@@ -12,8 +13,43 @@ type Props = {
   className?: string;
 };
 
+type HotspotData = {
+  locationId: string | undefined;
+  N: number;
+  yrN: number;
+  percent: number;
+  percentYr: number;
+  hotspot: { id: string; name: string } | undefined;
+};
+
+function downloadCSV(data: HotspotData[], speciesName: string, filter: string) {
+  const headers = ["Rank", "Hotspot Name", "Location ID", "Frequency (%)", "Checklists"];
+  const rows = data.map((item, index) => {
+    const percent = filter === "year" ? item.percentYr : item.percent;
+    const checklists = filter === "year" ? item.yrN : item.N;
+    return [
+      index + 1,
+      `"${(item.hotspot?.name || "Unknown Hotspot").replace(/"/g, '""')}"`,
+      item.locationId || "",
+      percent > 1 ? Math.round(percent) : percent,
+      checklists,
+    ].join(",");
+  });
+
+  const csv = [headers.join(","), ...rows].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", `best-hotspots-${speciesName.replace(/\s+/g, "-").toLowerCase()}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 export default function BestTargetHotspots({ speciesCode, speciesName, className }: Props) {
-  const [filter, setFilter] = React.useState("year");
+  const [filter, setFilter] = React.useState("range");
   const [isExpanded, setIsExpanded] = React.useState(false);
   const { trip, dateRangeLabel } = useTrip();
   const { allTargets } = useHotspotTargets();
@@ -69,10 +105,17 @@ export default function BestTargetHotspots({ speciesCode, speciesName, className
           value={filter}
           onChange={setFilter}
           options={[
-            { label: "All Year", value: "year" },
             { label: dateRangeLabel, value: "range" },
+            { label: "All Year", value: "year" },
           ]}
         />
+        <button
+          onClick={() => downloadCSV(topHotspots, speciesName, filter)}
+          className="ml-auto text-sky-600 hover:text-sky-700 p-1.5 rounded hover:bg-sky-50 transition-colors"
+          title="Download as CSV"
+        >
+          <Icon name="download" className="text-base" />
+        </button>
       </div>
       <div className="flex flex-col gap-2">
         {slicedHotspots.map(({ hotspot, locationId, N, yrN, percent, percentYr }, index) => {
