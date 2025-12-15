@@ -192,6 +192,9 @@ export type SpeciesCoverage = {
   maxObservations: number;
   maxObservationsYr: number;
   bestHotspotId: string | undefined;
+  weightedAvgPercent: number;
+  totalChecklists: number;
+  hotspotCount: number;
 };
 
 type TargetItem = {
@@ -211,44 +214,81 @@ type HotspotTargetData = {
 /**
  * Calculate the best hotspot coverage for each species across all saved hotspots.
  * Returns a map of species code to their coverage stats.
+ * 
+ * @param allTargets - Array of hotspot target data
+ * @param topN - Number of top hotspots to use for weighted average (default: 5)
  */
-export function calculateSpeciesCoverage(allTargets: HotspotTargetData[]): Map<string, SpeciesCoverage> {
-  const coverageMap = new Map<string, SpeciesCoverage>();
+export function calculateSpeciesCoverage(
+  allTargets: HotspotTargetData[],
+  topN: number = 5
+): Map<string, SpeciesCoverage> {
+  // First pass: collect all hotspot data for each species
+  const speciesHotspots = new Map<string, Array<{ percent: number; N: number; hotspotId: string }>>();
 
   for (const target of allTargets) {
     if (!target.hotspotId) continue;
 
     for (const item of target.items) {
-      const existing = coverageMap.get(item.code);
-      const observations = (item.percent * target.N) / 100;
-      const observationsYr = (item.percentYr * target.yrN) / 100;
+      if (!speciesHotspots.has(item.code)) {
+        speciesHotspots.set(item.code, []);
+      }
+      speciesHotspots.get(item.code)!.push({
+        percent: item.percent,
+        N: target.N,
+        hotspotId: target.hotspotId,
+      });
+    }
+  }
 
-      if (!existing) {
-        coverageMap.set(item.code, {
-          code: item.code,
-          maxPercent: item.percent,
-          maxPercentYr: item.percentYr,
-          maxObservations: observations,
-          maxObservationsYr: observationsYr,
-          bestHotspotId: target.hotspotId,
-        });
-      } else {
-        // Update if this hotspot has better coverage
-        if (item.percent > existing.maxPercent) {
-          existing.maxPercent = item.percent;
-          existing.bestHotspotId = target.hotspotId;
-        }
-        if (item.percentYr > existing.maxPercentYr) {
-          existing.maxPercentYr = item.percentYr;
-        }
-        if (observations > existing.maxObservations) {
-          existing.maxObservations = observations;
-        }
-        if (observationsYr > existing.maxObservationsYr) {
-          existing.maxObservationsYr = observationsYr;
-        }
+  // Second pass: calculate stats for each species
+  const coverageMap = new Map<string, SpeciesCoverage>();
+
+  for (const [code, hotspots] of speciesHotspots) {
+    // Sort by percentage descending to get top hotspots
+    const sortedHotspots = hotspots.sort((a, b) => b.percent - a.percent);
+    const topHotspots = sortedHotspots.slice(0, topN);
+
+    // Calculate weighted average using number of checklists as weight
+    let totalWeightedPercent = 0;
+    let totalChecklists = 0;
+
+    for (const hs of topHotspots) {
+      totalWeightedPercent += hs.percent * hs.N;
+      totalChecklists += hs.N;
+    }
+
+    const weightedAvgPercent = totalChecklists > 0 ? totalWeightedPercent / totalChecklists : 0;
+
+    // Find max values from all hotspots (not just top N)
+    const best = sortedHotspots[0];
+    let maxObservations = 0;
+    let maxObservationsYr = 0;
+    let maxPercentYr = 0;
+
+    // Re-scan for year-based stats
+    for (const target of allTargets) {
+      if (!target.hotspotId) continue;
+      const item = target.items.find((it) => it.code === code);
+      if (item) {
+        const obsYr = (item.percentYr * target.yrN) / 100;
+        if (obsYr > maxObservationsYr) maxObservationsYr = obsYr;
+        if (item.percentYr > maxPercentYr) maxPercentYr = item.percentYr;
+        const obs = (item.percent * target.N) / 100;
+        if (obs > maxObservations) maxObservations = obs;
       }
     }
+
+    coverageMap.set(code, {
+      code,
+      maxPercent: best?.percent || 0,
+      maxPercentYr,
+      maxObservations,
+      maxObservationsYr,
+      bestHotspotId: best?.hotspotId,
+      weightedAvgPercent: Math.round(weightedAvgPercent * 10) / 10, // Round to 1 decimal
+      totalChecklists,
+      hotspotCount: topHotspots.length,
+    });
   }
 
   return coverageMap;

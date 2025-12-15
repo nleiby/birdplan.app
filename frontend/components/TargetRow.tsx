@@ -13,12 +13,14 @@ import BestTargetHotspots from "components/BestTargetHotspots";
 import useMutation from "hooks/useMutation";
 import useTripMutation from "hooks/useTripMutation";
 import { useQueryClient } from "@tanstack/react-query";
+import { SpeciesCoverage } from "lib/helpers";
 
 type PropsT = Target & {
   index: number;
+  coverage?: SpeciesCoverage;
 };
 
-export default function TargetRow({ index, code, name, percent }: PropsT) {
+export default function TargetRow({ index, code, name, percent, coverage }: PropsT) {
   const [expandedCodes, setExpandedCodes] = React.useState<string[]>([]);
   const { trip, canEdit, setSelectedSpecies } = useTrip();
   const [tempNotes, setTempNotes] = React.useState(trip?.targetNotes?.[code] || "");
@@ -143,7 +145,18 @@ export default function TargetRow({ index, code, name, percent }: PropsT) {
             cacheMeasurements
           />
         </td>
-        <td className="text-gray-600 font-bold pr-1 pl-2 sm:pr-4 sm:pl-0">{percent}%</td>
+        <td className="text-gray-600 font-bold pr-1 pl-2 sm:pr-4 sm:pl-0">
+          {coverage && coverage.hotspotCount > 0 ? (
+            <span
+              title={`Weighted avg of top ${coverage.hotspotCount} hotspot${coverage.hotspotCount > 1 ? "s" : ""} (${coverage.totalChecklists.toLocaleString()} checklists). Region: ${percent}%`}
+              className="cursor-help border-b border-dotted border-gray-400"
+            >
+              {coverage.weightedAvgPercent}%
+            </span>
+          ) : (
+            <span title="Region-wide frequency">{percent}%</span>
+          )}
+        </td>
         <td className="text-[14px] text-gray-600 hidden sm:table-cell">
           {lastReport?.date
             ? dateTimeToRelative(lastReport.date, regionCode, true)

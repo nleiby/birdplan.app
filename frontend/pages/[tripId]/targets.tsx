@@ -19,7 +19,7 @@ import TargetRow from "components/TargetRow";
 import { useQuery } from "@tanstack/react-query";
 import { Editor } from "@birdplan/shared";
 import { useHotspotTargets } from "providers/hotspot-targets";
-import { calculateSpeciesCoverage, isLowCoverageSpecies } from "lib/helpers";
+import { calculateSpeciesCoverage, isLowCoverageSpecies, SpeciesCoverage } from "lib/helpers";
 const PAGE_SIZE = 50;
 
 export default function TripTargets() {
@@ -189,7 +189,10 @@ export default function TripTargets() {
                         <th className="text-left text-gray-500 font-normal uppercase text-xs pb-1 w-0 hidden md:table-cell">
                           Notes
                         </th>
-                        <th className="text-left text-gray-500 font-normal uppercase text-xs pb-1 md:w-12 lg:w-20">
+                        <th
+                          className="text-left text-gray-500 font-normal uppercase text-xs pb-1 md:w-12 lg:w-20"
+                          title="Weighted average frequency at your top saved hotspots"
+                        >
                           %
                         </th>
                         <th className="text-left text-gray-500 font-normal uppercase text-xs pb-1">Last seen</th>
@@ -197,7 +200,14 @@ export default function TripTargets() {
                       </tr>
                     </thead>
                     <tbody className="divide-y">
-                      {truncatedTargets?.map((it, index) => <TargetRow key={it.code} {...it} index={index} />)}
+                      {truncatedTargets?.map((it, index) => (
+                        <TargetRow
+                          key={it.code}
+                          {...it}
+                          index={index}
+                          coverage={speciesCoverage.get(it.code)}
+                        />
+                      ))}
                     </tbody>
                   </table>
                 )}
