@@ -15,6 +15,7 @@ type Props = {
   customMarkers?: CustomMarker[];
   hotspotLayer?: any;
   obsLayer?: any;
+  hasFrequencyData?: boolean;
   addingMarker?: boolean;
   showSatellite?: boolean;
   onHotspotClick?: (id: string) => void;
@@ -28,6 +29,7 @@ export default function Mapbox({
   onHotspotClick,
   hotspotLayer,
   obsLayer,
+  hasFrequencyData,
   addingMarker,
   showSatellite,
   onDisableAddingMarker,
@@ -97,9 +99,36 @@ export default function Mapbox({
     type: "circle",
     paint: {
       "circle-radius": isMobile ? 8 : 7,
-      "circle-stroke-width": 0.75,
-      "circle-stroke-color": "#555",
-      "circle-color": ["match", ["get", "isPersonal"], "true", "#555", "#ce0d02"],
+      "circle-stroke-width": hasFrequencyData
+        ? ["match", ["get", "hasSavedData"], "true", 2, 0.75]
+        : 0.75,
+      "circle-stroke-color": hasFrequencyData
+        ? ["match", ["get", "hasSavedData"], "true", "#1e3a8a", "#555"]
+        : "#555",
+      "circle-color": hasFrequencyData
+        ? [
+            "case",
+            ["==", ["get", "isPersonal"], "true"],
+            "#555",
+            ["==", ["get", "hasSavedData"], "false"],
+            "#9ca3af", // Gray for hotspots without saved data
+            [
+              "match",
+              ["get", "colorIndex"],
+              0, markerColors[0],
+              1, markerColors[1],
+              2, markerColors[2],
+              3, markerColors[3],
+              4, markerColors[4],
+              5, markerColors[5],
+              6, markerColors[6],
+              7, markerColors[7],
+              8, markerColors[8],
+              9, markerColors[9],
+              markerColors[0],
+            ],
+          ]
+        : ["match", ["get", "isPersonal"], "true", "#555", "#ce0d02"],
     },
   };
 
@@ -214,7 +243,7 @@ export default function Mapbox({
           </Marker>
         )}
       </Map>
-      {obsLayer && (
+      {obsLayer && !hasFrequencyData && (
         <div className="flex absolute bottom-0 left-0 bg-white/90 py-1.5 pl-2 pr-3 text-xs items-center gap-2 z-10 rounded-tr-sm">
           <span className="flex items-center gap-1">
             <span className="w-2.5 h-2.5 rounded-full bg-[#555]" /> Personal Location
@@ -222,6 +251,28 @@ export default function Mapbox({
           <span className="flex items-center gap-1">
             <span className="w-2.5 h-2.5 rounded-full bg-[#ce0d02]" /> Hotspot
           </span>
+        </div>
+      )}
+      {obsLayer && hasFrequencyData && (
+        <div className="flex flex-col absolute bottom-0 left-0 bg-white/90 py-1.5 pl-2 pr-3 text-xs z-10 rounded-tr-sm gap-1">
+          <span className="text-[10px] text-gray-500 font-medium uppercase tracking-wide">Trip Date Frequency</span>
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#9ca3af]" /> No data
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2.5 h-2.5 rounded-full border-2 border-[#1e3a8a]" style={{ backgroundColor: markerColors[1] }} /> {"<5%"}
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2.5 h-2.5 rounded-full border-2 border-[#1e3a8a]" style={{ backgroundColor: markerColors[4] }} /> 10%
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2.5 h-2.5 rounded-full border-2 border-[#1e3a8a]" style={{ backgroundColor: markerColors[7] }} /> 30%
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2.5 h-2.5 rounded-full border-2 border-[#1e3a8a]" style={{ backgroundColor: markerColors[9] }} /> 50%+
+            </span>
+          </div>
         </div>
       )}
       <div className="absolute bottom-0 left-16 right-16 h-4 sm:hidden">

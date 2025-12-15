@@ -184,3 +184,87 @@ export function getGooglePlaceUrl(lat: number, lng: number, placeId?: string) {
     ? `https://www.google.com/maps/search/?api=1&query=${lat},${lng}&query_place_id=${placeId}`
     : `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
 }
+
+export type SpeciesCoverage = {
+  code: string;
+  maxPercent: number;
+  maxPercentYr: number;
+  maxObservations: number;
+  maxObservationsYr: number;
+  bestHotspotId: string | undefined;
+};
+
+type TargetItem = {
+  code: string;
+  name: string;
+  percent: number;
+  percentYr: number;
+};
+
+type HotspotTargetData = {
+  hotspotId?: string;
+  items: TargetItem[];
+  N: number;
+  yrN: number;
+};
+
+/**
+ * Calculate the best hotspot coverage for each species across all saved hotspots.
+ * Returns a map of species code to their coverage stats.
+ */
+export function calculateSpeciesCoverage(allTargets: HotspotTargetData[]): Map<string, SpeciesCoverage> {
+  const coverageMap = new Map<string, SpeciesCoverage>();
+
+  for (const target of allTargets) {
+    if (!target.hotspotId) continue;
+
+    for (const item of target.items) {
+      const existing = coverageMap.get(item.code);
+      const observations = (item.percent * target.N) / 100;
+      const observationsYr = (item.percentYr * target.yrN) / 100;
+
+      if (!existing) {
+        coverageMap.set(item.code, {
+          code: item.code,
+          maxPercent: item.percent,
+          maxPercentYr: item.percentYr,
+          maxObservations: observations,
+          maxObservationsYr: observationsYr,
+          bestHotspotId: target.hotspotId,
+        });
+      } else {
+        // Update if this hotspot has better coverage
+        if (item.percent > existing.maxPercent) {
+          existing.maxPercent = item.percent;
+          existing.bestHotspotId = target.hotspotId;
+        }
+        if (item.percentYr > existing.maxPercentYr) {
+          existing.maxPercentYr = item.percentYr;
+        }
+        if (observations > existing.maxObservations) {
+          existing.maxObservations = observations;
+        }
+        if (observationsYr > existing.maxObservationsYr) {
+          existing.maxObservationsYr = observationsYr;
+        }
+      }
+    }
+  }
+
+  return coverageMap;
+}
+
+/**
+ * Check if a species has low coverage (hard to find) at all saved hotspots.
+ * @param coverage - The coverage stats for the species
+ * @param percentThreshold - Max percentage threshold (default 15%)
+ * @param observationsThreshold - Max observations threshold (default 10)
+ */
+export function isLowCoverageSpecies(
+  coverage: SpeciesCoverage | undefined,
+  percentThreshold: number = 15,
+  observationsThreshold: number = 10
+): boolean {
+  if (!coverage) return true; // Species not found at any hotspot
+  return coverage.maxPercent < percentThreshold || coverage.maxObservations < observationsThreshold;
+}

@@ -18,20 +18,31 @@ import NotFound from "components/NotFound";
 import TargetRow from "components/TargetRow";
 import { useQuery } from "@tanstack/react-query";
 import { Editor } from "@birdplan/shared";
+import { useHotspotTargets } from "providers/hotspot-targets";
+import { calculateSpeciesCoverage, isLowCoverageSpecies } from "lib/helpers";
 const PAGE_SIZE = 50;
 
 export default function TripTargets() {
   const { open, close } = useModal();
   const { user } = useUser();
   const { is404, targets, trip, selectedSpecies, canEdit } = useTrip();
-  const { obs, obsLayer } = useFetchSpeciesObs({ region: trip?.region, code: selectedSpecies?.code });
+  const { allTargets } = useHotspotTargets();
+  const { obs, obsLayer, hasFrequencyData } = useFetchSpeciesObs({
+    region: trip?.region,
+    code: selectedSpecies?.code,
+    allTargets,
+  });
 
   // Filter options
   const [search, setSearch] = React.useState("");
   const [showStarred, setShowStarred] = React.useState(false);
+  const [showHardToFind, setShowHardToFind] = React.useState(false);
   const [uid, setUid] = React.useState<string | undefined>();
   const [page, setPage] = React.useState(1);
   const showCount = page * PAGE_SIZE;
+
+  // Calculate species coverage across all hotspots
+  const speciesCoverage = React.useMemo(() => calculateSpeciesCoverage(allTargets), [allTargets]);
 
   // Exclude non-lifers
   const { lifelist: myLifelist } = useProfile();
@@ -49,7 +60,8 @@ export default function TripTargets() {
   const filteredTargets = targetSpecies?.filter(
     (it) =>
       it.name.toLowerCase().includes(search.toLowerCase()) &&
-      (showStarred ? trip?.targetStars?.includes(it.code) : true)
+      (showStarred ? trip?.targetStars?.includes(it.code) : true) &&
+      (showHardToFind ? isLowCoverageSpecies(speciesCoverage.get(it.code)) : true)
   );
 
   const truncatedTargets = filteredTargets?.slice(0, showCount);
@@ -119,6 +131,20 @@ export default function TripTargets() {
                       />
                       <span className="text-gray-600 text-sm">Starred</span>
                     </label>
+                    {allTargets.length > 0 && (
+                      <label
+                        className="flex items-center gap-2 py-2 px-3 text-gray-600 text-sm"
+                        title="Species with less than 15% frequency or fewer than 10 observations at all saved hotspots"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={showHardToFind}
+                          onChange={() => setShowHardToFind(!showHardToFind)}
+                          className="form-checkbox text-sky-600"
+                        />
+                        <span className="text-gray-600 text-sm">Hard to find</span>
+                      </label>
+                    )}
                   </div>
                 )}
                 {!!targets?.N && !truncatedTargets?.length && (
@@ -195,6 +221,7 @@ export default function TripTargets() {
                     key={trip._id}
                     onHotspotClick={obsClick}
                     obsLayer={selectedSpecies && obsLayer}
+                    hasFrequencyData={hasFrequencyData}
                     bounds={trip.bounds}
                   />
                 )}
