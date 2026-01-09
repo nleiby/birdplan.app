@@ -54,30 +54,32 @@ function getFrequencyColorIndex(percent: number): number {
 }
 
 /**
- * Get a color index (0-9) based on sighting score for unsaved hotspots.
+ * Get a color index (3-9) based on sighting score for unsaved hotspots.
  * Uses report count and recency to estimate how "good" a hotspot is.
+ * 
+ * Minimum colorIndex is 3 (light blue) to ensure unsaved hotspots with sightings
+ * are visually distinct from gray "no data" markers.
  * 
  * Score formula: reportCount * recencyMultiplier
  * - recencyMultiplier: 1.0 for today, decreasing for older sightings
  */
 function getSightingColorIndex(stats: SightingStats): number {
-  // Recency bonus: more recent = higher multiplier (1.0 to 0.3)
-  const recencyMultiplier = Math.max(0.3, 1 - (stats.daysAgo / 30) * 0.7);
+  // Recency bonus: more recent = higher multiplier (1.0 to 0.5)
+  const recencyMultiplier = Math.max(0.5, 1 - (stats.daysAgo / 30) * 0.5);
   
   // Base score from report count, boosted by recency
   const score = stats.reportCount * recencyMultiplier;
   
-  // Map score to color index (calibrated for typical observation counts)
-  if (score >= 10) return 9;
-  if (score >= 7) return 8;
-  if (score >= 5) return 7;
-  if (score >= 4) return 6;
-  if (score >= 3) return 5;
-  if (score >= 2.5) return 4;
-  if (score >= 2) return 3;
-  if (score >= 1.5) return 2;
-  if (score >= 1) return 1;
-  return 0;
+  // Map score to color index 3-9 (minimum 3 = light blue, ensures visibility)
+  // Any hotspot with sightings should be visually distinct from gray
+  if (score >= 8) return 9;   // dark red
+  if (score >= 6) return 8;   // red
+  if (score >= 4) return 7;   // orange
+  if (score >= 3) return 6;   // yellow-orange
+  if (score >= 2) return 5;   // yellow
+  if (score >= 1.5) return 4; // yellow-green
+  // Minimum colorIndex 3 for any hotspot with at least 1 sighting
+  return 3; // light blue - still visually distinct
 }
 
 export default function useFetchSpeciesObs({ region, code, allTargets }: Props) {

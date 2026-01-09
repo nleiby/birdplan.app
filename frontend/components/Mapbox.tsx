@@ -274,13 +274,13 @@ export default function Mapbox({
               <span className="text-[10px] text-gray-500 font-medium uppercase tracking-wide">Unsaved (sightings)</span>
               <div className="flex items-center gap-1.5">
                 <span className="flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 rounded-full border border-[#374151]" style={{ backgroundColor: markerColors[1] }} /> 1×
+                  <span className="w-2.5 h-2.5 rounded-full border border-[#374151]" style={{ backgroundColor: markerColors[3] }} /> 1×
                 </span>
                 <span className="flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 rounded-full border border-[#374151]" style={{ backgroundColor: markerColors[5] }} /> 3×
+                  <span className="w-2.5 h-2.5 rounded-full border border-[#374151]" style={{ backgroundColor: markerColors[6] }} /> 3×
                 </span>
                 <span className="flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 rounded-full border border-[#374151]" style={{ backgroundColor: markerColors[9] }} /> 10×+
+                  <span className="w-2.5 h-2.5 rounded-full border border-[#374151]" style={{ backgroundColor: markerColors[9] }} /> 8×+
                 </span>
               </div>
             </div>
