@@ -302,10 +302,10 @@ export default function Mapbox({
               <span className="text-[10px] text-gray-500 font-medium uppercase tracking-wide">Saved (frequency)</span>
               <div className="flex items-center gap-1.5">
                 <span className="flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 rounded-full border-2 border-[#1e3a8a]" style={{ backgroundColor: markerColors[1] }} /> {"<5%"}
+                  <span className="w-2.5 h-2.5 rounded-full border-2 border-[#1e3a8a]" style={{ backgroundColor: markerColors[3] }} /> {"<10%"}
                 </span>
                 <span className="flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 rounded-full border-2 border-[#1e3a8a]" style={{ backgroundColor: markerColors[5] }} /> 15%
+                  <span className="w-2.5 h-2.5 rounded-full border-2 border-[#1e3a8a]" style={{ backgroundColor: markerColors[6] }} /> 20%
                 </span>
                 <span className="flex items-center gap-1">
                   <span className="w-2.5 h-2.5 rounded-full border-2 border-[#1e3a8a]" style={{ backgroundColor: markerColors[9] }} /> 50%+

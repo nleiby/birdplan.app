@@ -37,8 +37,9 @@ type Props = {
 };
 
 /**
- * Get a color index (0-9) based on frequency percentage.
- * Higher percentages = higher index = warmer colors
+ * Get a color index (3-9) based on frequency percentage.
+ * Higher percentages = higher index = warmer colors.
+ * Minimum colorIndex is 3 to ensure all hotspots are visually distinct.
  */
 function getFrequencyColorIndex(percent: number): number {
   if (percent >= 50) return 9;
@@ -47,10 +48,9 @@ function getFrequencyColorIndex(percent: number): number {
   if (percent >= 20) return 6;
   if (percent >= 15) return 5;
   if (percent >= 10) return 4;
-  if (percent >= 7) return 3;
-  if (percent >= 5) return 2;
-  if (percent > 0) return 1;
-  return 0;
+  if (percent >= 5) return 3;
+  // Minimum colorIndex 3 for any hotspot with data
+  return 3;
 }
 
 /**
@@ -164,14 +164,15 @@ export default function useFetchSpeciesObs({ region, code, allTargets }: Props) 
             const frequency = frequencyMap.get(it.id) || 0;
             const sightingStats = sightingStatsMap.get(it.id);
             
-            // Use saved frequency data if available, otherwise use sighting-based color
+            // Use saved frequency data if available, otherwise use recency-based color
             let colorIndex: number;
             if (hasSavedData) {
               colorIndex = getFrequencyColorIndex(frequency);
             } else if (sightingStats) {
               colorIndex = getSightingColorIndex(sightingStats);
             } else {
-              colorIndex = 0;
+              // Fallback: minimum colorIndex 3 to avoid gray
+              colorIndex = 3;
             }
 
             return {
