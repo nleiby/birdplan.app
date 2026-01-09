@@ -94,18 +94,62 @@ export default function Mapbox({
     },
   };
 
+  const baseRadius = isMobile ? 8 : 7;
+  const smallRadius = isMobile ? 5 : 4;
+
   const obsLayerStyle = {
     id: "obs",
     type: "circle",
     paint: {
-      "circle-radius": isMobile ? 8 : 7,
+      // Saved hotspots and high-scoring unsaved get full size, low-scoring unsaved get smaller
+      "circle-radius": hasFrequencyData
+        ? [
+            "case",
+            ["==", ["get", "hasSavedData"], "true"],
+            baseRadius,
+            // Unsaved: scale radius by colorIndex (3-9 range, so 3=small, 9=large)
+            ["interpolate", ["linear"], ["get", "colorIndex"],
+              3, smallRadius,
+              6, baseRadius - 1,
+              9, baseRadius
+            ],
+          ]
+        : baseRadius,
       // Saved hotspots get thick blue border, unsaved get thin dark border
       "circle-stroke-width": hasFrequencyData
-        ? ["match", ["get", "hasSavedData"], "true", 2, 1]
+        ? ["match", ["get", "hasSavedData"], "true", 2, 0.75]
         : 0.75,
       "circle-stroke-color": hasFrequencyData
         ? ["match", ["get", "hasSavedData"], "true", "#1e3a8a", "#374151"]
         : "#555",
+      // Opacity: saved hotspots full opacity, unsaved scale by score
+      "circle-opacity": hasFrequencyData
+        ? [
+            "case",
+            ["==", ["get", "hasSavedData"], "true"],
+            1,
+            // Unsaved: lower scores are more transparent
+            ["interpolate", ["linear"], ["get", "colorIndex"],
+              3, 0.5,
+              5, 0.7,
+              7, 0.85,
+              9, 1
+            ],
+          ]
+        : 1,
+      "circle-stroke-opacity": hasFrequencyData
+        ? [
+            "case",
+            ["==", ["get", "hasSavedData"], "true"],
+            1,
+            ["interpolate", ["linear"], ["get", "colorIndex"],
+              3, 0.5,
+              5, 0.7,
+              7, 0.85,
+              9, 1
+            ],
+          ]
+        : 1,
       "circle-color": hasFrequencyData
         ? [
             "case",
