@@ -17,10 +17,16 @@ import ProfileSelect from "components/ProfileSelect";
 import NotFound from "components/NotFound";
 import TargetRow from "components/TargetRow";
 import { useQuery } from "@tanstack/react-query";
-import { Editor } from "@birdplan/shared";
+import { Editor, Target } from "@birdplan/shared";
 import { useHotspotTargets } from "providers/hotspot-targets";
 import { calculateSpeciesCoverage, isLowCoverageSpecies, SpeciesCoverage } from "lib/helpers";
+import useFetchRecentSpecies from "hooks/useFetchRecentSpecies";
+import clsx from "clsx";
+
 const PAGE_SIZE = 50;
+
+type SortColumn = "name" | "percent" | "lastSeen";
+type SortDirection = "asc" | "desc";
 
 export default function TripTargets() {
   const { open, close } = useModal();
@@ -41,8 +47,15 @@ export default function TripTargets() {
   const [page, setPage] = React.useState(1);
   const showCount = page * PAGE_SIZE;
 
+  // Sort options (default to descending by percent)
+  const [sortColumn, setSortColumn] = React.useState<SortColumn>("percent");
+  const [sortDirection, setSortDirection] = React.useState<SortDirection>("desc");
+
   // Calculate species coverage across all hotspots
   const speciesCoverage = React.useMemo(() => calculateSpeciesCoverage(allTargets), [allTargets]);
+
+  // Fetch recent species for last seen sorting
+  const { recentSpecies } = useFetchRecentSpecies(trip?.region);
 
   // Exclude non-lifers
   const { lifelist: myLifelist } = useProfile();
@@ -64,7 +77,62 @@ export default function TripTargets() {
       (showHardToFind ? isLowCoverageSpecies(speciesCoverage.get(it.code)) : true)
   );
 
-  const truncatedTargets = filteredTargets?.slice(0, showCount);
+  // Sort targets
+  const sortedTargets = React.useMemo(() => {
+    if (!filteredTargets) return [];
+
+    const getEffectivePercent = (target: Target) => {
+      const coverage = speciesCoverage.get(target.code);
+      return coverage && coverage.hotspotCount > 0 ? coverage.weightedAvgPercent : target.percent;
+    };
+
+    const getLastSeenDate = (code: string) => {
+      const recent = recentSpecies?.find((s) => s.code === code);
+      return recent?.date ? new Date(recent.date).getTime() : 0;
+    };
+
+    return [...filteredTargets].sort((a, b) => {
+      let comparison = 0;
+
+      switch (sortColumn) {
+        case "name":
+          comparison = a.name.localeCompare(b.name);
+          break;
+        case "percent":
+          comparison = getEffectivePercent(a) - getEffectivePercent(b);
+          break;
+        case "lastSeen":
+          comparison = getLastSeenDate(a.code) - getLastSeenDate(b.code);
+          break;
+      }
+
+      return sortDirection === "desc" ? -comparison : comparison;
+    });
+  }, [filteredTargets, sortColumn, sortDirection, speciesCoverage, recentSpecies]);
+
+  const truncatedTargets = sortedTargets?.slice(0, showCount);
+
+  // Handle column header click
+  const handleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      // Toggle direction if same column
+      setSortDirection(sortDirection === "desc" ? "asc" : "desc");
+    } else {
+      // New column, default to descending
+      setSortColumn(column);
+      setSortDirection("desc");
+    }
+  };
+
+  // Sort indicator component
+  const SortIndicator = ({ column }: { column: SortColumn }) => {
+    if (sortColumn !== column) return null;
+    return (
+      <span className="ml-1 text-sky-600">
+        {sortDirection === "desc" ? "↓" : "↑"}
+      </span>
+    );
+  };
 
   const obsClick = (id: string) => {
     const observation = obs.find((it) => it.id === id);
@@ -185,17 +253,40 @@ export default function TripTargets() {
                         <th className="text-left text-gray-500 font-normal uppercase text-xs pb-1 w-[4.3rem] lg:w-20">
                           Image
                         </th>
-                        <th className="text-left text-gray-500 font-normal uppercase text-xs pb-1">Species</th>
+                        <th
+                          className={clsx(
+                            "text-left text-gray-500 font-normal uppercase text-xs pb-1 cursor-pointer hover:text-gray-700 select-none",
+                            sortColumn === "name" && "text-sky-600"
+                          )}
+                          onClick={() => handleSort("name")}
+                        >
+                          Species
+                          <SortIndicator column="name" />
+                        </th>
                         <th className="text-left text-gray-500 font-normal uppercase text-xs pb-1 w-0 hidden md:table-cell">
                           Notes
                         </th>
                         <th
-                          className="text-left text-gray-500 font-normal uppercase text-xs pb-1 md:w-12 lg:w-20"
+                          className={clsx(
+                            "text-left text-gray-500 font-normal uppercase text-xs pb-1 md:w-12 lg:w-20 cursor-pointer hover:text-gray-700 select-none",
+                            sortColumn === "percent" && "text-sky-600"
+                          )}
                           title="Weighted average frequency at your top saved hotspots"
+                          onClick={() => handleSort("percent")}
                         >
                           %
+                          <SortIndicator column="percent" />
                         </th>
-                        <th className="text-left text-gray-500 font-normal uppercase text-xs pb-1">Last seen</th>
+                        <th
+                          className={clsx(
+                            "text-left text-gray-500 font-normal uppercase text-xs pb-1 cursor-pointer hover:text-gray-700 select-none",
+                            sortColumn === "lastSeen" && "text-sky-600"
+                          )}
+                          onClick={() => handleSort("lastSeen")}
+                        >
+                          Last seen
+                          <SortIndicator column="lastSeen" />
+                        </th>
                         <th className="w-0" />
                       </tr>
                     </thead>
@@ -213,9 +304,9 @@ export default function TripTargets() {
                 )}
 
                 <div className="my-4 text-center pb-4">
-                  {filteredTargets?.length > showCount && (
+                  {sortedTargets?.length > showCount && (
                     <button type="button" className="text-sky-600 font-bold text-sm" onClick={() => setPage(page + 1)}>
-                      Show {Math.min(filteredTargets.length - showCount, 50)} more
+                      Show {Math.min(sortedTargets.length - showCount, 50)} more
                     </button>
                   )}
                 </div>
