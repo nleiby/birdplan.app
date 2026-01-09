@@ -101,17 +101,17 @@ export default function Mapbox({
     id: "obs",
     type: "circle",
     paint: {
-      // Saved hotspots and high-scoring unsaved get full size, low-scoring unsaved get smaller
+      // Saved hotspots full size, unsaved slightly smaller but consistent
       "circle-radius": hasFrequencyData
         ? [
             "case",
             ["==", ["get", "hasSavedData"], "true"],
             baseRadius,
-            // Unsaved: scale radius by colorIndex (3-9 range, so 3=small, 9=large)
+            // Unsaved: slightly smaller than saved, scale by recency
             ["interpolate", ["linear"], ["get", "colorIndex"],
-              3, smallRadius,
-              6, baseRadius - 1,
-              9, baseRadius
+              3, smallRadius + 1,
+              5, baseRadius - 1,
+              7, baseRadius
             ],
           ]
         : baseRadius,
@@ -122,18 +122,17 @@ export default function Mapbox({
       "circle-stroke-color": hasFrequencyData
         ? ["match", ["get", "hasSavedData"], "true", "#1e3a8a", "#374151"]
         : "#555",
-      // Opacity: saved hotspots full opacity, unsaved scale by score
+      // Opacity: saved hotspots full opacity, unsaved scale by recency
       "circle-opacity": hasFrequencyData
         ? [
             "case",
             ["==", ["get", "hasSavedData"], "true"],
             1,
-            // Unsaved: lower scores are more transparent
+            // Unsaved: older sightings more transparent, recent ones more visible
             ["interpolate", ["linear"], ["get", "colorIndex"],
-              3, 0.5,
-              5, 0.7,
-              7, 0.85,
-              9, 1
+              3, 0.6,
+              5, 0.8,
+              7, 0.95
             ],
           ]
         : 1,
@@ -143,10 +142,9 @@ export default function Mapbox({
             ["==", ["get", "hasSavedData"], "true"],
             1,
             ["interpolate", ["linear"], ["get", "colorIndex"],
-              3, 0.5,
-              5, 0.7,
-              7, 0.85,
-              9, 1
+              3, 0.6,
+              5, 0.8,
+              7, 0.95
             ],
           ]
         : 1,
@@ -315,16 +313,16 @@ export default function Mapbox({
               </div>
             </div>
             <div className="flex flex-col gap-0.5">
-              <span className="text-[10px] text-gray-500 font-medium uppercase tracking-wide">Unsaved (sightings)</span>
+              <span className="text-[10px] text-gray-500 font-medium uppercase tracking-wide">Unsaved (recency)</span>
               <div className="flex items-center gap-1.5">
                 <span className="flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 rounded-full border border-[#374151]" style={{ backgroundColor: markerColors[3] }} /> 1×
+                  <span className="w-2.5 h-2.5 rounded-full border border-[#374151]" style={{ backgroundColor: markerColors[3] }} /> 30d
                 </span>
                 <span className="flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 rounded-full border border-[#374151]" style={{ backgroundColor: markerColors[6] }} /> 3×
+                  <span className="w-2.5 h-2.5 rounded-full border border-[#374151]" style={{ backgroundColor: markerColors[5] }} /> 7d
                 </span>
                 <span className="flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 rounded-full border border-[#374151]" style={{ backgroundColor: markerColors[9] }} /> 8×+
+                  <span className="w-2.5 h-2.5 rounded-full border border-[#374151]" style={{ backgroundColor: markerColors[7] }} /> today
                 </span>
               </div>
             </div>

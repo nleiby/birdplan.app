@@ -54,32 +54,20 @@ function getFrequencyColorIndex(percent: number): number {
 }
 
 /**
- * Get a color index (3-9) based on sighting score for unsaved hotspots.
- * Uses report count and recency to estimate how "good" a hotspot is.
+ * Get a color index based on recency for unsaved hotspots.
  * 
- * Minimum colorIndex is 3 (light blue) to ensure unsaved hotspots with sightings
- * are visually distinct from gray "no data" markers.
- * 
- * Score formula: reportCount * recencyMultiplier
- * - recencyMultiplier: 1.0 for today, decreasing for older sightings
+ * Since the eBird API only returns one entry per location (most recent observation),
+ * we can't calculate true sighting frequency. Instead, we color by recency:
+ * - More recent sightings = warmer colors
+ * - Older sightings = cooler colors
  */
 function getSightingColorIndex(stats: SightingStats): number {
-  // Recency bonus: more recent = higher multiplier (1.0 to 0.5)
-  const recencyMultiplier = Math.max(0.5, 1 - (stats.daysAgo / 30) * 0.5);
-  
-  // Base score from report count, boosted by recency
-  const score = stats.reportCount * recencyMultiplier;
-  
-  // Map score to color index 3-9 (minimum 3 = light blue, ensures visibility)
-  // Any hotspot with sightings should be visually distinct from gray
-  if (score >= 8) return 9;   // dark red
-  if (score >= 6) return 8;   // red
-  if (score >= 4) return 7;   // orange
-  if (score >= 3) return 6;   // yellow-orange
-  if (score >= 2) return 5;   // yellow
-  if (score >= 1.5) return 4; // yellow-green
-  // Minimum colorIndex 3 for any hotspot with at least 1 sighting
-  return 3; // light blue - still visually distinct
+  // Color by recency: today = warm, 30 days ago = cool
+  if (stats.daysAgo <= 1) return 7;   // orange - seen today/yesterday
+  if (stats.daysAgo <= 3) return 6;   // yellow-orange - seen in last 3 days
+  if (stats.daysAgo <= 7) return 5;   // yellow - seen in last week
+  if (stats.daysAgo <= 14) return 4;  // yellow-green - seen in last 2 weeks
+  return 3; // light blue - seen in last month
 }
 
 export default function useFetchSpeciesObs({ region, code, allTargets }: Props) {
