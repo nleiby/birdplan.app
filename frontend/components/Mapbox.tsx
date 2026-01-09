@@ -99,19 +99,19 @@ export default function Mapbox({
     type: "circle",
     paint: {
       "circle-radius": isMobile ? 8 : 7,
+      // Saved hotspots get thick blue border, unsaved get thin dark border
       "circle-stroke-width": hasFrequencyData
-        ? ["match", ["get", "hasSavedData"], "true", 2, 0.75]
+        ? ["match", ["get", "hasSavedData"], "true", 2, 1]
         : 0.75,
       "circle-stroke-color": hasFrequencyData
-        ? ["match", ["get", "hasSavedData"], "true", "#1e3a8a", "#555"]
+        ? ["match", ["get", "hasSavedData"], "true", "#1e3a8a", "#374151"]
         : "#555",
       "circle-color": hasFrequencyData
         ? [
             "case",
             ["==", ["get", "isPersonal"], "true"],
             "#555",
-            ["==", ["get", "hasSavedData"], "false"],
-            "#9ca3af", // Gray for hotspots without saved data
+            // All hotspots now get colored by their colorIndex (saved = frequency, unsaved = sighting score)
             [
               "match",
               ["get", "colorIndex"],
@@ -255,23 +255,35 @@ export default function Mapbox({
       )}
       {obsLayer && hasFrequencyData && (
         <div className="flex flex-col absolute bottom-0 left-0 bg-white/90 py-1.5 pl-2 pr-3 text-xs z-10 rounded-tr-sm gap-1">
-          <span className="text-[10px] text-gray-500 font-medium uppercase tracking-wide">Trip Date Frequency</span>
-          <div className="flex items-center gap-2">
-            <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#9ca3af]" /> No data
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-full border-2 border-[#1e3a8a]" style={{ backgroundColor: markerColors[1] }} /> {"<5%"}
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-full border-2 border-[#1e3a8a]" style={{ backgroundColor: markerColors[4] }} /> 10%
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-full border-2 border-[#1e3a8a]" style={{ backgroundColor: markerColors[7] }} /> 30%
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-full border-2 border-[#1e3a8a]" style={{ backgroundColor: markerColors[9] }} /> 50%+
-            </span>
+          <div className="flex items-center gap-3">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[10px] text-gray-500 font-medium uppercase tracking-wide">Saved (frequency)</span>
+              <div className="flex items-center gap-1.5">
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded-full border-2 border-[#1e3a8a]" style={{ backgroundColor: markerColors[1] }} /> {"<5%"}
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded-full border-2 border-[#1e3a8a]" style={{ backgroundColor: markerColors[5] }} /> 15%
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded-full border-2 border-[#1e3a8a]" style={{ backgroundColor: markerColors[9] }} /> 50%+
+                </span>
+              </div>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[10px] text-gray-500 font-medium uppercase tracking-wide">Unsaved (sightings)</span>
+              <div className="flex items-center gap-1.5">
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded-full border border-[#374151]" style={{ backgroundColor: markerColors[1] }} /> 1×
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded-full border border-[#374151]" style={{ backgroundColor: markerColors[5] }} /> 3×
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded-full border border-[#374151]" style={{ backgroundColor: markerColors[9] }} /> 10×+
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       )}
