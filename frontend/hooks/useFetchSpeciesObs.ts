@@ -34,6 +34,7 @@ type Props = {
   region?: string;
   code?: string;
   allTargets?: TargetList[];
+  showPersonalLocations?: boolean;
 };
 
 /**
@@ -70,7 +71,7 @@ function getSightingColorIndex(stats: SightingStats): number {
   return 3; // light blue - seen in last month
 }
 
-export default function useFetchSpeciesObs({ region, code, allTargets }: Props) {
+export default function useFetchSpeciesObs({ region, code, allTargets, showPersonalLocations = false }: Props) {
   const { data: rawData } = useQuery<RawObs[]>({
     queryKey: [`${EBIRD_BASE_URL}/data/obs/${region}/recent/${code}`, { back: 30, includeProvisional: true }],
     enabled: !!region && !!code,
@@ -93,6 +94,9 @@ export default function useFetchSpeciesObs({ region, code, allTargets }: Props) 
     const now = new Date();
 
     for (const raw of rawData) {
+      // Skip personal locations if toggle is off
+      if (!showPersonalLocations && raw.locationPrivate) continue;
+
       const id = raw.locId;
       
       // Calculate days ago for this observation
@@ -131,7 +135,7 @@ export default function useFetchSpeciesObs({ region, code, allTargets }: Props) 
     }
 
     return { uniqueObs: unique, sightingStatsMap: statsMap };
-  }, [rawData]);
+  }, [rawData, showPersonalLocations]);
 
   const obsRef = React.useRef<Obs[]>([]);
   obsRef.current = uniqueObs;

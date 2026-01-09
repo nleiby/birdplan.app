@@ -33,10 +33,12 @@ export default function TripTargets() {
   const { user } = useUser();
   const { is404, targets, trip, selectedSpecies, canEdit } = useTrip();
   const { allTargets } = useHotspotTargets();
+  const [showPersonalLocations, setShowPersonalLocations] = React.useState(false);
   const { obs, obsLayer, hasFrequencyData } = useFetchSpeciesObs({
     region: trip?.region,
     code: selectedSpecies?.code,
     allTargets,
+    showPersonalLocations,
   });
 
   // Filter options
@@ -326,6 +328,15 @@ export default function TripTargets() {
                     bounds={trip.bounds}
                   />
                 )}
+                <label className="absolute bottom-3 left-3 z-10 flex items-center gap-2 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-md text-sm cursor-pointer hover:bg-white transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={showPersonalLocations}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setShowPersonalLocations(e.target.checked)}
+                    className="w-4 h-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
+                  />
+                  <span className="text-gray-700">Show personal locations</span>
+                </label>
               </div>
             </div>
           )}
