@@ -338,3 +338,41 @@ export function getHotspotSpeciesImportance(
 
   return result;
 }
+
+export type BestHotspotRow = {
+  hotspotId: string;
+  hotspotName: string;
+  percent: number;
+  N: number;
+};
+
+/**
+ * Best saved hotspots for a species (trip dates only).
+ * Returns ranked list of hotspots where species is >= cutoff, sorted by percent descending.
+ */
+export function getBestHotspotsForSpecies(
+  speciesCode: string,
+  allTargets: HotspotTargetData[],
+  locationIds: string[],
+  hotspots: { id: string; name: string }[]
+): BestHotspotRow[] {
+  const cutoff = 5; // HOTSPOT_TARGET_CUTOFF - avoid circular import from lib/config
+  return allTargets
+    .filter(
+      (t) =>
+        t.hotspotId &&
+        locationIds.includes(t.hotspotId) &&
+        (t.items.find((it) => it.code === speciesCode)?.percent ?? 0) >= cutoff
+    )
+    .map((t) => {
+      const item = t.items.find((it) => it.code === speciesCode);
+      const hotspot = hotspots.find((h) => h.id === t.hotspotId);
+      return {
+        hotspotId: t.hotspotId!,
+        hotspotName: hotspot?.name ?? "Hotspot",
+        percent: item?.percent ?? 0,
+        N: t.N,
+      };
+    })
+    .sort((a, b) => b.percent - a.percent);
+}

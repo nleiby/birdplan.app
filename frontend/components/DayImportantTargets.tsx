@@ -3,18 +3,24 @@ import { Day } from "@birdplan/shared";
 import { useTrip } from "providers/trip";
 import { useHotspotTargets } from "providers/hotspot-targets";
 import { useProfile } from "providers/profile";
-import { getHotspotSpeciesImportance } from "lib/helpers";
+import { getHotspotSpeciesImportance, getBestHotspotsForSpecies } from "lib/helpers";
 import Icon from "components/Icon";
 
 type Props = {
   day: Day;
 };
 
-type ImportantSpecies = {
+type SpeciesAtHotspot = {
   code: string;
   name: string;
-  bestAtHotspotId: string | undefined;
+  isBestAtThisHotspot: boolean;
   isCritical: boolean;
+};
+
+type HotspotSpecies = {
+  hotspotId: string;
+  hotspotName: string;
+  species: SpeciesAtHotspot[];
 };
 
 function getSpeciesName(code: string, allTargets: { items: { code: string; name: string }[] }[]): string {
@@ -30,7 +36,7 @@ export default function DayImportantTargets({ day }: Props) {
   const { allTargets } = useHotspotTargets();
   const { lifelist } = useProfile();
 
-  const hotspotIds = React.useMemo(
+  const hotspotsInOrder = React.useMemo(
     () =>
       (day.locations ?? [])
         .filter((loc) => loc.type === "hotspot")
@@ -38,40 +44,44 @@ export default function DayImportantTargets({ day }: Props) {
     [day.locations]
   );
 
-  const importantSpecies = React.useMemo(() => {
-    if (!allTargets?.length || !hotspotIds.length) return [];
+  const byHotspot = React.useMemo((): HotspotSpecies[] => {
+    if (!allTargets?.length || !hotspotsInOrder.length) return [];
 
-    const byCode = new Map<string, ImportantSpecies>();
+    const result: HotspotSpecies[] = [];
 
-    for (const hotspotId of hotspotIds) {
+    for (const hotspotId of hotspotsInOrder) {
+      const hotspot = trip?.hotspots?.find((h) => h.id === hotspotId);
       const importanceMap = getHotspotSpeciesImportance(allTargets, hotspotId);
+      const species: SpeciesAtHotspot[] = [];
+
       for (const [code, imp] of importanceMap) {
         if (!imp.isBestAtThisHotspot && !imp.isCritical) continue;
-        const existing = byCode.get(code);
-        const bestAtHotspotId = imp.isBestAtThisHotspot ? hotspotId : undefined;
-        if (!existing) {
-          byCode.set(code, {
-            code,
-            name: getSpeciesName(code, allTargets),
-            bestAtHotspotId: bestAtHotspotId ?? undefined,
-            isCritical: imp.isCritical,
-          });
-        } else {
-          byCode.set(code, {
-            ...existing,
-            bestAtHotspotId: existing.bestAtHotspotId ?? bestAtHotspotId,
-            isCritical: existing.isCritical || imp.isCritical,
-          });
-        }
+        if (lifelist?.includes(code)) continue;
+        species.push({
+          code,
+          name: getSpeciesName(code, allTargets),
+          isBestAtThisHotspot: imp.isBestAtThisHotspot,
+          isCritical: imp.isCritical,
+        });
+      }
+
+      species.sort((a, b) => a.name.localeCompare(b.name));
+      if (species.length > 0) {
+        result.push({
+          hotspotId,
+          hotspotName: hotspot?.name ?? "Hotspot",
+          species,
+        });
       }
     }
 
-    return Array.from(byCode.values())
-      .filter((s) => !lifelist?.includes(s.code))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [allTargets, hotspotIds, lifelist]);
+    return result;
+  }, [allTargets, hotspotsInOrder, trip?.hotspots, lifelist]);
 
-  if (!importantSpecies.length) return null;
+  const locationIds = trip?.hotspots?.map((h) => h.id) ?? [];
+  const hotspots = trip?.hotspots ?? [];
+
+  if (!byHotspot.length) return null;
 
   return (
     <div className="mb-4 p-3 bg-amber-50/80 rounded-lg border border-amber-100">
@@ -79,25 +89,46 @@ export default function DayImportantTargets({ day }: Props) {
         <Icon name="star" className="w-4 h-4 text-amber-500" />
         Key targets today
       </h3>
-      <ul className="text-sm text-gray-700 space-y-1">
-        {importantSpecies.map(({ code, name, bestAtHotspotId, isCritical }) => {
-          const hotspot = trip?.hotspots?.find((h) => h.id === bestAtHotspotId);
-          const sub = bestAtHotspotId
-            ? ` — best at ${hotspot?.name ?? "this hotspot"}`
-            : isCritical
-              ? " — hard to see elsewhere"
-              : "";
-          return (
-            <li key={code} className="flex items-center gap-1.5">
-              <Icon name="star" className="w-3 h-3 text-amber-500 flex-shrink-0" />
-              <span>
-                {name}
-                {sub && <span className="text-gray-500">{sub}</span>}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
+      <div className="text-sm text-gray-700 space-y-3">
+        {byHotspot.map(({ hotspotId, hotspotName, species }) => (
+          <div key={hotspotId}>
+            <div className="font-medium text-gray-800 mb-1">{hotspotName}</div>
+            <ul className="space-y-1 pl-2 border-l-2 border-amber-200">
+              {species.map(({ code, name, isBestAtThisHotspot, isCritical }) => {
+                const bestHotspots = getBestHotspotsForSpecies(code, allTargets ?? [], locationIds, hotspots);
+                return (
+                  <li key={code} className="group relative flex items-center gap-1.5">
+                    <Icon name="star" className="w-3 h-3 text-amber-500 flex-shrink-0" />
+                    <span>{name}</span>
+                    <span className="text-gray-500 text-xs">
+                      {isBestAtThisHotspot && isCritical
+                        ? " · best here, hard elsewhere"
+                        : isBestAtThisHotspot
+                          ? " · best here"
+                          : " · hard to see elsewhere"}
+                    </span>
+                    {bestHotspots.length > 0 && (
+                      <div className="absolute left-0 top-full z-10 mt-1 hidden min-w-[200px] max-w-[280px] rounded-lg border border-gray-200 bg-white py-2 shadow-lg group-hover:block">
+                        <div className="border-b border-gray-100 px-3 pb-1.5 text-xs font-bold text-gray-600">
+                          Best saved hotspots
+                        </div>
+                        <ul className="max-h-48 overflow-y-auto px-3 pt-1.5 text-xs text-gray-700">
+                          {bestHotspots.map((row, idx) => (
+                            <li key={row.hotspotId} className="py-0.5">
+                              {idx + 1}. {row.hotspotName}: {row.percent > 1 ? Math.round(row.percent) : row.percent}% (
+                              {row.N} checklists)
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
