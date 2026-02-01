@@ -308,3 +308,33 @@ export function isLowCoverageSpecies(
   if (!coverage) return true; // Species not found at any hotspot
   return coverage.maxPercent < percentThreshold || coverage.maxObservations < observationsThreshold;
 }
+
+export type HotspotSpeciesImportance = {
+  isBestAtThisHotspot: boolean;
+  isCritical: boolean;
+};
+
+/**
+ * For a given hotspot, which target species are "important" there (trip dates only).
+ * Best = this hotspot is the best place for that species; Critical = hard to see at other saved hotspots.
+ */
+export function getHotspotSpeciesImportance(
+  allTargets: HotspotTargetData[],
+  hotspotId: string
+): Map<string, HotspotSpeciesImportance> {
+  const coverage = calculateSpeciesCoverage(allTargets);
+  const hotspotTarget = allTargets.find((t) => t.hotspotId === hotspotId);
+  const result = new Map<string, HotspotSpeciesImportance>();
+
+  if (!hotspotTarget?.items?.length) return result;
+
+  for (const item of hotspotTarget.items) {
+    const cov = coverage.get(item.code);
+    result.set(item.code, {
+      isBestAtThisHotspot: cov?.bestHotspotId === hotspotId,
+      isCritical: isLowCoverageSpecies(cov),
+    });
+  }
+
+  return result;
+}
