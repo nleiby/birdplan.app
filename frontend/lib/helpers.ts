@@ -346,6 +346,8 @@ export type BestHotspotRow = {
   N: number;
 };
 
+const HOTSPOT_TARGET_CUTOFF_PERCENT = 5; // match lib/config HOTSPOT_TARGET_CUTOFF
+
 /**
  * Best saved hotspots for a species (trip dates only).
  * Returns ranked list of hotspots where species is >= cutoff, sorted by percent descending.
@@ -356,13 +358,42 @@ export function getBestHotspotsForSpecies(
   locationIds: string[],
   hotspots: { id: string; name: string }[]
 ): BestHotspotRow[] {
-  const cutoff = 5; // HOTSPOT_TARGET_CUTOFF - avoid circular import from lib/config
   return allTargets
     .filter(
       (t) =>
         t.hotspotId &&
         locationIds.includes(t.hotspotId) &&
-        (t.items.find((it) => it.code === speciesCode)?.percent ?? 0) >= cutoff
+        (t.items.find((it) => it.code === speciesCode)?.percent ?? 0) >= HOTSPOT_TARGET_CUTOFF_PERCENT
+    )
+    .map((t) => {
+      const item = t.items.find((it) => it.code === speciesCode);
+      const hotspot = hotspots.find((h) => h.id === t.hotspotId);
+      return {
+        hotspotId: t.hotspotId!,
+        hotspotName: hotspot?.name ?? "Hotspot",
+        percent: item?.percent ?? 0,
+        N: t.N,
+      };
+    })
+    .sort((a, b) => b.percent - a.percent);
+}
+
+/**
+ * All saved hotspots where a species appears (trip dates only), any frequency.
+ * Used for hover fallback when species is below 5% at every hotspot.
+ */
+export function getAllHotspotsForSpecies(
+  speciesCode: string,
+  allTargets: HotspotTargetData[],
+  locationIds: string[],
+  hotspots: { id: string; name: string }[]
+): BestHotspotRow[] {
+  return allTargets
+    .filter(
+      (t) =>
+        t.hotspotId &&
+        locationIds.includes(t.hotspotId) &&
+        (t.items.find((it) => it.code === speciesCode)?.percent ?? 0) > 0
     )
     .map((t) => {
       const item = t.items.find((it) => it.code === speciesCode);

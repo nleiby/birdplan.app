@@ -3,7 +3,11 @@ import { Day } from "@birdplan/shared";
 import { useTrip } from "providers/trip";
 import { useHotspotTargets } from "providers/hotspot-targets";
 import { useProfile } from "providers/profile";
-import { getHotspotSpeciesImportance, getBestHotspotsForSpecies } from "lib/helpers";
+import {
+  getHotspotSpeciesImportance,
+  getBestHotspotsForSpecies,
+  getAllHotspotsForSpecies,
+} from "lib/helpers";
 import Icon from "components/Icon";
 
 type Props = {
@@ -81,6 +85,11 @@ export default function DayImportantTargets({ day }: Props) {
   const locationIds = trip?.hotspots?.map((h) => h.id) ?? [];
   const hotspots = trip?.hotspots ?? [];
 
+  // Hover data comes from allTargets (refetched when targets are downloaded or reset for a hotspot).
+  // Adding a hotspot to the itinerary does not refetch allTargets. A species may have no "best"
+  // hover (bestHotspots.length === 0) if it is below 5% at every saved hotspot; we then show a
+  // fallback hover with all hotspots where it appears.
+
   if (!byHotspot.length) return null;
 
   return (
@@ -96,6 +105,14 @@ export default function DayImportantTargets({ day }: Props) {
             <ul className="space-y-1 pl-2 border-l-2 border-amber-200">
               {species.map(({ code, name, isBestAtThisHotspot, isCritical }) => {
                 const bestHotspots = getBestHotspotsForSpecies(code, allTargets ?? [], locationIds, hotspots);
+                const allHotspots =
+                  bestHotspots.length === 0
+                    ? getAllHotspotsForSpecies(code, allTargets ?? [], locationIds, hotspots)
+                    : [];
+                const showHover = bestHotspots.length > 0 || allHotspots.length > 0;
+                const isBelowCutoff = bestHotspots.length === 0 && allHotspots.length > 0;
+                const hoverList = bestHotspots.length > 0 ? bestHotspots : allHotspots;
+
                 return (
                   <li key={code} className="group relative flex items-center gap-1.5">
                     <Icon name="star" className="w-3 h-3 text-amber-500 flex-shrink-0" />
@@ -107,13 +124,13 @@ export default function DayImportantTargets({ day }: Props) {
                           ? " · best here"
                           : " · hard to see elsewhere"}
                     </span>
-                    {bestHotspots.length > 0 && (
+                    {showHover && (
                       <div className="absolute left-0 top-full z-10 mt-1 hidden min-w-[200px] max-w-[280px] rounded-lg border border-gray-200 bg-white py-2 shadow-lg group-hover:block">
                         <div className="border-b border-gray-100 px-3 pb-1.5 text-xs font-bold text-gray-600">
-                          Best saved hotspots
+                          {isBelowCutoff ? "At saved hotspots (all below 5%)" : "Best saved hotspots"}
                         </div>
                         <ul className="max-h-48 overflow-y-auto px-3 pt-1.5 text-xs text-gray-700">
-                          {bestHotspots.map((row, idx) => (
+                          {hoverList.map((row, idx) => (
                             <li key={row.hotspotId} className="py-0.5">
                               {idx + 1}. {row.hotspotName}: {row.percent > 1 ? Math.round(row.percent) : row.percent}% (
                               {row.N} checklists)
