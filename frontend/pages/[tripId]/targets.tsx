@@ -22,6 +22,8 @@ import { useHotspotTargets } from "providers/hotspot-targets";
 import { calculateSpeciesCoverage, isLowCoverageSpecies, SpeciesCoverage } from "lib/helpers";
 import useFetchRecentSpecies from "hooks/useFetchRecentSpecies";
 import clsx from "clsx";
+import MapButton from "components/MapButton";
+import Icon from "components/Icon";
 
 const PAGE_SIZE = 50;
 
@@ -328,15 +330,15 @@ export default function TripTargets() {
                     bounds={trip.bounds}
                   />
                 )}
-                <label className="absolute bottom-3 left-3 z-10 flex items-center gap-2 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-md text-sm cursor-pointer hover:bg-white transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={showPersonalLocations}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setShowPersonalLocations(e.target.checked)}
-                    className="w-4 h-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
-                  />
-                  <span className="text-gray-700">Show personal locations</span>
-                </label>
+                <div className="absolute top-4 right-4 flex flex-col gap-3 z-10">
+                  <MapButton
+                    onClick={() => setShowPersonalLocations((prev) => !prev)}
+                    tooltip={showPersonalLocations ? "Hide personal locations" : "Show personal locations"}
+                    active={showPersonalLocations}
+                  >
+                    <Icon name="user" />
+                  </MapButton>
+                </div>
               </div>
             </div>
           )}
