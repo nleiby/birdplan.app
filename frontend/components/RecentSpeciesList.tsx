@@ -17,8 +17,7 @@ export default function RecentSpeciesList({ locId, onSpeciesClick }: Props) {
   const { recentSpecies, isLoading, error, refetch } = useFetchRecentSpecies(locId);
   const [viewAll, setViewAll] = React.useState(false);
   const { trip, setSelectedSpecies } = useTrip();
-  const hotspot = trip?.hotspots.find((it) => it.id === locId);
-  const favCodes = hotspot?.favs?.map((it) => it.code) || [];
+  const favCodes = trip?.targetStars ?? [];
   const regionCode = trip?.region.split(",")[0] || "";
 
   const filteredObs = viewAll ? recentSpecies : recentSpecies.slice(0, previewCount);

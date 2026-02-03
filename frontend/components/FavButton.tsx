@@ -2,7 +2,6 @@ import React from "react";
 import Icon from "components/Icon";
 import { useTrip } from "providers/trip";
 import useTripMutation from "hooks/useTripMutation";
-import { HotspotFav } from "@birdplan/shared";
 
 type Props = {
   hotspotId: string;
@@ -14,27 +13,23 @@ type Props = {
 
 export default function FavButton({ hotspotId, code, name, range, percent }: Props) {
   const { trip, canEdit } = useTrip();
-  const hotspot = trip?.hotspots.find((it) => it.id === hotspotId);
-  const favIds = hotspot?.favs?.map((it) => it.code) || [];
-  const isFav = favIds.includes(code);
+  const isFav = trip?.targetStars?.includes(code) ?? false;
 
-  const addFavMutation = useTripMutation<HotspotFav>({
-    url: `/trips/${trip?._id}/hotspots/${hotspotId}/add-species-fav`,
-    method: "POST",
+  const addFavMutation = useTripMutation<{ code: string }>({
+    url: `/trips/${trip?._id}/targets/add-star`,
+    method: "PATCH",
     updateCache: (old, input) => ({
       ...old,
-      hotspots: old.hotspots.map((it) => (it.id === hotspotId ? { ...it, favs: [...(it.favs || []), input] } : it)),
+      targetStars: [...(old.targetStars ?? []), input.code],
     }),
   });
 
   const removeFavMutation = useTripMutation<{ code: string }>({
-    url: `/trips/${trip?._id}/hotspots/${hotspotId}/remove-species-fav`,
+    url: `/trips/${trip?._id}/targets/remove-star`,
     method: "PATCH",
     updateCache: (old, input) => ({
       ...old,
-      hotspots: old.hotspots.map((it) =>
-        it.id === hotspotId ? { ...it, favs: it.favs?.filter((it) => it.code !== input.code) } : it
-      ),
+      targetStars: (old.targetStars || []).filter((it) => it !== input.code),
     }),
   });
 
@@ -42,7 +37,7 @@ export default function FavButton({ hotspotId, code, name, range, percent }: Pro
     if (isFav) {
       removeFavMutation.mutate({ code });
     } else {
-      addFavMutation.mutate({ code, name, range, percent });
+      addFavMutation.mutate({ code });
     }
   };
   return (

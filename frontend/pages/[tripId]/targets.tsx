@@ -218,7 +218,7 @@ export default function TripTargets() {
                         onChange={() => setShowStarred(!showStarred)}
                         className="form-checkbox text-sky-600"
                       />
-                      <span className="text-gray-600 text-sm">Starred</span>
+                      <span className="text-gray-600 text-sm">Favorites</span>
                     </label>
                     {allTargets.length > 0 && (
                       <label
