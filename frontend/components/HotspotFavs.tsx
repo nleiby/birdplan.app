@@ -25,16 +25,20 @@ export default function HotspotFavs({ hotspotId }: Props) {
   const hotspotItems = hotspotTarget?.items ?? [];
   const tripTargetItems = targets?.items ?? [];
 
-  const favsWithDisplay: FavDisplay[] = favCodes.map((code) => {
-    const atHotspot = hotspotItems.find((it) => it.code === code);
-    const atTrip = tripTargetItems.find((it) => it.code === code);
-    return {
-      code,
-      name: atHotspot?.name ?? atTrip?.name ?? code,
-      range: atHotspot ? "Trip dates" : "—",
-      percent: atHotspot?.percent ?? null,
-    };
-  });
+  const favsWithDisplay: FavDisplay[] = favCodes
+    .map((code) => {
+      const atHotspot = hotspotItems.find((it) => it.code === code);
+      const atTrip = tripTargetItems.find((it) => it.code === code);
+      return {
+        code,
+        name: atHotspot?.name ?? atTrip?.name ?? code,
+        range: atHotspot ? "Trip dates" : "—",
+        percent: atHotspot?.percent ?? null,
+      };
+    })
+    .filter((fav) => fav.percent != null && fav.percent > 0);
+
+  if (!favsWithDisplay.length) return null;
 
   const sortedFavs = [...favsWithDisplay].sort((a, b) => {
     const pa = a.percent ?? 0;
