@@ -39,7 +39,11 @@ export default function HotspotTargetRow({
   onClick,
 }: Props) {
   const actualPercent = view === "all" ? percentYr : percent;
-  const showImportance = importance && (importance.isBestAtThisHotspot || importance.isCritical);
+  const hasDataAtThisHotspot = view === "all" ? percentYr > 0 : percent > 0;
+  const showImportance =
+    importance &&
+    (importance.isBestAtThisHotspot || importance.isCritical) &&
+    hasDataAtThisHotspot;
   const tooltip = showImportance ? importanceTooltip(importance) : undefined;
 
   return (
