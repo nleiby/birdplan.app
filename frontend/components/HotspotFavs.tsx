@@ -1,5 +1,6 @@
 import React from "react";
 import FavButton from "components/FavButton";
+import MerlinkLink from "components/MerlinLink";
 import { useTrip } from "providers/trip";
 import { useHotspotTargets } from "providers/hotspot-targets";
 
@@ -54,7 +55,9 @@ export default function HotspotFavs({ hotspotId }: Props) {
           key={code}
           className="border-t last:border-b border-gray-100 py-1.5 text-gray-500/80 text-[13px] grid gap-2 grid-cols-1 sm:grid-cols-2 mx-1"
         >
-          <div className="pt-2 text-gray-900 text-sm">{name}</div>
+          <div className="pt-2 text-gray-900 text-sm">
+            <MerlinkLink code={code}>{name}</MerlinkLink>
+          </div>
           <div className="flex gap-5">
             <FavButton hotspotId={hotspotId} code={code} name={name} range={range} percent={percent ?? 0} />
             <div className="flex flex-col gap-1 w-full col-span-2">
