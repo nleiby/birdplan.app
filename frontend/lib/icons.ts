@@ -288,7 +288,7 @@ type MarkerIconsT = {
   };
 };
 
-export const markerColos = {
+export const markerIconColors = {
   sky: "#0284c7",
   black: "#334155",
   pink: "#ff385b",
@@ -303,111 +303,111 @@ export const markerColos = {
 export const markerIcons = {
   utensils: {
     icon: "utensils",
-    color: markerColos.yellow,
+    color: markerIconColors.yellow,
   },
   mug: {
     icon: "mug",
-    color: markerColos.yellow,
+    color: markerIconColors.yellow,
   },
   trolley: {
     icon: "trolley",
-    color: markerColos.yellow,
+    color: markerIconColors.yellow,
   },
   shop: {
     icon: "shop",
-    color: markerColos.black,
+    color: markerIconColors.black,
   },
   building: {
     icon: "building",
-    color: markerColos.black,
+    color: markerIconColors.black,
   },
   school: {
     icon: "school",
-    color: markerColos.black,
+    color: markerIconColors.black,
   },
   church: {
     icon: "church",
-    color: markerColos.black,
+    color: markerIconColors.black,
   },
   mosque: {
     icon: "mosque",
-    color: markerColos.black,
+    color: markerIconColors.black,
   },
   airport: {
     icon: "airplane",
-    color: markerColos.purple,
+    color: markerIconColors.purple,
   },
   boat: {
     icon: "boat",
-    color: markerColos.purple,
+    color: markerIconColors.purple,
   },
   car: {
     icon: "car",
-    color: markerColos.purple,
+    color: markerIconColors.purple,
   },
   bus: {
     icon: "bus",
-    color: markerColos.purple,
+    color: markerIconColors.purple,
   },
   hike: {
     icon: "hike",
-    color: markerColos.green,
+    color: markerIconColors.green,
   },
   mountain: {
     icon: "tree",
-    color: markerColos.green,
+    color: markerIconColors.green,
   },
   tent: {
     icon: "campground",
-    color: markerColos.green,
+    color: markerIconColors.green,
   },
   house: {
     icon: "house",
-    color: markerColos.pink,
+    color: markerIconColors.pink,
   },
   airbnb: {
     icon: "airbnb",
-    color: markerColos.pink,
+    color: markerIconColors.pink,
   },
   bed: {
     icon: "bed",
-    color: markerColos.pink,
+    color: markerIconColors.pink,
   },
   ski: {
     icon: "ski",
-    color: markerColos.blue,
+    color: markerIconColors.blue,
   },
   bike: {
     icon: "cycling",
-    color: markerColos.blue,
+    color: markerIconColors.blue,
   },
   fish: {
     icon: "fish",
-    color: markerColos.blue,
+    color: markerIconColors.blue,
   },
   dog: {
     icon: "dog",
-    color: markerColos.blue,
+    color: markerIconColors.blue,
   },
   bins: {
     icon: "bins",
-    color: markerColos.blue,
+    color: markerIconColors.blue,
   },
   toilets: {
     icon: "toilets",
-    color: markerColos.gray,
+    color: markerIconColors.gray,
   },
   parking: {
     icon: "parking",
-    color: markerColos.gray,
+    color: markerIconColors.gray,
   },
   wheelchair: {
     icon: "wheelchair",
-    color: markerColos.gray,
+    color: markerIconColors.gray,
   },
   hotspot: {
     icon: "star",
-    color: markerColos.sky,
+    color: markerIconColors.sky,
   },
 } as const;
 

@@ -50,7 +50,9 @@ export default function HotspotFavs({ hotspotId }: Props) {
   return (
     <div className="mt-8 mb-4">
       <h3 className="text-gray-900 text-sm font-bold mb-2">Favorites</h3>
-      {sortedFavs.map(({ code, name, range, percent }) => (
+      {sortedFavs.map(({ code, name, range, percent }) => {
+        const isFav = trip?.targetStars?.includes(code);
+        return (
         <div
           key={code}
           className="border-t last:border-b border-gray-100 py-1.5 text-gray-500/80 text-[13px] grid gap-2 grid-cols-1 sm:grid-cols-2 mx-1"
@@ -59,7 +61,7 @@ export default function HotspotFavs({ hotspotId }: Props) {
             <MerlinkLink code={code}>{name}</MerlinkLink>
           </div>
           <div className="flex gap-5">
-            <FavButton hotspotId={hotspotId} code={code} name={name} range={range} percent={percent ?? 0} />
+            <FavButton code={code} ariaLabel={`${isFav ? "Remove" : "Add"} ${name} from favorites`} />
             <div className="flex flex-col gap-1 w-full col-span-2">
               <div>
                 <span className="text-gray-600 text-[15px] font-bold">
@@ -76,7 +78,8 @@ export default function HotspotFavs({ hotspotId }: Props) {
             </div>
           </div>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

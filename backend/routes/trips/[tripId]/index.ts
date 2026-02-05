@@ -3,7 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import { authenticate, tripToGeoJson, sanitizeFileName, nanoId } from "lib/utils.js";
 import { connect, Trip, TargetList, Invite, Profile } from "lib/db.js";
 import type { TripUpdateInput, Editor } from "@birdplan/shared";
-import { TargetListType } from "@birdplan/shared";
+import { TargetListType, daysBetweenInclusive } from "@birdplan/shared";
 import targets from "./targets.js";
 import markers from "./markers.js";
 import hotspots from "./hotspots.js";
@@ -76,6 +76,12 @@ trip.patch("/", async (c) => {
   return c.json({ hasChangedDates });
 });
 
+/**
+ * PATCH /migrate-favs-to-stars
+ * One-time migration: merges all hotspot.favs[].code into trip.targetStars.
+ * Idempotent — safe to call multiple times; existing targetStars are not duplicated.
+ * Body: none. Response: { migrated: number, added?: string[] } or { migrated: 0, message: string }.
+ */
 trip.patch("/migrate-favs-to-stars", async (c) => {
   const session = await authenticate(c);
 
@@ -282,14 +288,13 @@ trip.patch("/set-start-date", async (c) => {
   return c.json({});
 });
 
-function daysBetweenInclusive(startDateStr: string, endDateStr: string): number {
-  const start = new Date(startDateStr);
-  const end = new Date(endDateStr);
-  const diffTime = end.getTime() - start.getTime();
-  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-  return diffDays + 1;
-}
-
+/**
+ * PATCH /set-date-range
+ * Sets trip start and end dates; creates or extends itinerary days to match the range.
+ * Body: { startDate: string, endDate: string } (ISO date strings).
+ * Validates: end >= start, day count >= existing itinerary length.
+ * Response: {}.
+ */
 trip.patch("/set-date-range", async (c) => {
   const session = await authenticate(c);
   const tripId: string | undefined = c.req.param("tripId");

@@ -25,6 +25,11 @@ import clsx from "clsx";
 import MapButton from "components/MapButton";
 import Icon from "components/Icon";
 
+/**
+ * Trip targets page: species list with filters (search, Favorites, Hard to find),
+ * sort by name / weighted percent / last seen, personal locations toggle on the map,
+ * and map heatmap by frequency or recency.
+ */
 const PAGE_SIZE = 50;
 
 type SortColumn = "name" | "percent" | "lastSeen";

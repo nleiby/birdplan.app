@@ -5,7 +5,7 @@ import MarkerWithIcon from "components/MarkerWithIcon";
 import { useModal } from "providers/modals";
 import useTripMutation from "hooks/useTripMutation";
 import { nanoId } from "lib/helpers";
-import { MarkerIconT, markerColos } from "lib/icons";
+import { MarkerIconT, markerIconColors } from "lib/icons";
 import clsx from "clsx";
 
 type Props = {
@@ -88,7 +88,7 @@ export default function AddItineraryLocation({ dayId }: Props) {
                     <MarkerWithIcon
                       showStroke={false}
                       icon="hotspot"
-                      color={isOnItinerary ? undefined : markerColos.lightGray}
+                      color={isOnItinerary ? undefined : markerIconColors.lightGray}
                       className="inline-block scale-75 flex-shrink-0"
                     />
                     <span className="truncate">{hotspot.name}</span>

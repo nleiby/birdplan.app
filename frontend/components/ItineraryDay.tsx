@@ -1,3 +1,7 @@
+/**
+ * Single itinerary day card: date, locations (hotspots/markers), travel time between them,
+ * optional DayImportantTargets ("Key targets today"), and edit/remove actions when editing.
+ */
 import React from "react";
 import Button from "components/Button";
 import { useTrip } from "providers/trip";

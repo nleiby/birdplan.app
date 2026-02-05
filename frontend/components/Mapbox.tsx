@@ -1,3 +1,8 @@
+/**
+ * Trip map: hotspots, custom markers, and optional observation layer (species sightings).
+ * When obsLayer and hasFrequencyData are set, the legend shows frequency (trip-date % at saved hotspots);
+ * otherwise it shows recency (days since last sighting at unsaved locations).
+ */
 import React from "react";
 import Map, { Marker, Source, Layer, GeolocateControl } from "react-map-gl";
 import { Marker as MarkerT } from "lib/types";
@@ -14,7 +19,9 @@ type Props = {
   markers?: MarkerT[];
   customMarkers?: CustomMarker[];
   hotspotLayer?: any;
+  /** GeoJSON layer for species observations; colors by frequency (saved) or recency (unsaved). */
   obsLayer?: any;
+  /** When true, legend shows frequency scale; when false, legend shows recency scale. */
   hasFrequencyData?: boolean;
   addingMarker?: boolean;
   showSatellite?: boolean;

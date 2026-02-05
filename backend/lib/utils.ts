@@ -81,6 +81,7 @@ const targetsToHtml = (targets: TargetList[], id?: string) => {
 
 type HotspotTargetItem = { code: string; name: string; percent: number };
 
+/** Favorites section HTML for KML placemark description (trip.targetStars + hotspot target items). */
 const favsToHtml = (trip: Trip, hotspotTargetItems: HotspotTargetItem[] | undefined) => {
   const favCodes = trip?.targetStars ?? [];
   if (!favCodes.length || !hotspotTargetItems?.length) {
@@ -105,6 +106,7 @@ const favsToHtml = (trip: Trip, hotspotTargetItems: HotspotTargetItem[] | undefi
   return html + "<br/><br/>";
 };
 
+/** Converts a trip and its target lists to GeoJSON for export (KML, etc.). */
 export const tripToGeoJson = (trip: Trip, targets: TargetList[]) => {
   const hotspots = trip?.hotspots || [];
   const markers = trip?.markers || [];
