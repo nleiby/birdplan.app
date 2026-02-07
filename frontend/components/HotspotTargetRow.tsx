@@ -2,6 +2,7 @@ import React from "react";
 import { Target } from "@birdplan/shared";
 import FavButton from "components/FavButton";
 import Icon from "components/Icon";
+import { useTrip } from "providers/trip";
 import type { HotspotSpeciesImportance } from "lib/helpers";
 
 type Props = Target & {
@@ -38,8 +39,13 @@ export default function HotspotTargetRow({
   importance,
   onClick,
 }: Props) {
+  const { trip } = useTrip();
   const actualPercent = view === "all" ? percentYr : percent;
-  const showImportance = importance && (importance.isBestAtThisHotspot || importance.isCritical);
+  const hasDataAtThisHotspot = view === "all" ? percentYr > 0 : percent > 0;
+  const showImportance =
+    importance &&
+    (importance.isBestAtThisHotspot || importance.isCritical) &&
+    hasDataAtThisHotspot;
   const tooltip = showImportance ? importanceTooltip(importance) : undefined;
 
   return (
@@ -61,13 +67,7 @@ export default function HotspotTargetRow({
         </button>
       </div>
       <div className="flex gap-5 sm:col-span-2">
-        <FavButton
-          hotspotId={hotspotId}
-          code={code}
-          name={name}
-          range={view === "all" ? "All Year" : range}
-          percent={view === "all" ? percentYr : percent}
-        />
+        <FavButton code={code} ariaLabel={`${trip?.targetStars?.includes(code) ? "Remove" : "Add"} ${name} from favorites`} />
         <div className="flex flex-col gap-1 w-full col-span-2">
           <div>
             <span className="text-gray-600 text-[15px] font-bold">

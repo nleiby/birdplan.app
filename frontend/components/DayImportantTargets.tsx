@@ -1,3 +1,8 @@
+/**
+ * Key targets today: species that are best on this day and substantially better than other days,
+ * or that are critical (hard to see) across the trip. Rendered per itinerary day; collapsible
+ * with a short preview when collapsed.
+ */
 import React from "react";
 import { Day } from "@birdplan/shared";
 import { useTrip } from "providers/trip";

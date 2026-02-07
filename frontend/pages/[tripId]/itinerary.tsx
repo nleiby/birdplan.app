@@ -15,12 +15,7 @@ import useTripMutation from "hooks/useTripMutation";
 import { nanoId } from "lib/helpers";
 import ItineraryDay from "components/ItineraryDay";
 import dayjs from "dayjs";
-
-function daysBetweenInclusive(startDateStr: string, endDateStr: string): number {
-  const start = dayjs(startDateStr);
-  const end = dayjs(endDateStr);
-  return end.diff(start, "day") + 1;
-}
+import { daysBetweenInclusive } from "@birdplan/shared";
 
 export default function Itinerary() {
   const { user } = useUser();

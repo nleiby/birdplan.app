@@ -110,7 +110,7 @@ export default function TargetRow({ index, code, name, percent, coverage }: Prop
         <td className="text-gray-500 px-4 hidden sm:table-cell">{index + 1}.</td>
         <td className="relative">
           <div className="sm:hidden absolute top-1 left-2">
-            {isStarred && <Icon name="star" className="text-yellow-500" />}
+            {isStarred && <Icon name="heartSolid" className="text-pink-700" />}
           </div>
           <MerlinkLink code={code}>
             {img ? (
@@ -163,8 +163,9 @@ export default function TargetRow({ index, code, name, percent, coverage }: Prop
                 onClick={() => removeStarMutation.mutate({ code })}
                 className="items-center justify-cente hidden sm:flex"
                 disabled={!canEdit}
+                title="Remove from favorites"
               >
-                <Icon name="star" className="text-yellow-500 text-lg" />
+                <Icon name="heartSolid" className="text-pink-700 text-lg" />
               </button>
             ) : (
               <button
@@ -172,8 +173,9 @@ export default function TargetRow({ index, code, name, percent, coverage }: Prop
                 onClick={() => addStarMutation.mutate({ code })}
                 className="items-center justify-cente hidden sm:flex"
                 disabled={!canEdit}
+                title="Add to favorites"
               >
-                <Icon name="starOutline" className="text-gray-500 text-lg" />
+                <Icon name="heart" className="text-gray-500 text-lg" />
               </button>
             )}
             <Button
@@ -222,8 +224,8 @@ export default function TargetRow({ index, code, name, percent, coverage }: Prop
                   className={mobileBtnClasses}
                   disabled={!canEdit}
                 >
-                  <Icon name="star" className="text-yellow-500 text-lg" />
-                  Remove star
+                  <Icon name="heartSolid" className="text-pink-700 text-lg" />
+                  Remove from favorites
                 </button>
               ) : (
                 <button
@@ -232,8 +234,8 @@ export default function TargetRow({ index, code, name, percent, coverage }: Prop
                   className={mobileBtnClasses}
                   disabled={!canEdit}
                 >
-                  <Icon name="starOutline" className="text-gray-500 text-lg" />
-                  Add star
+                  <Icon name="heart" className="text-gray-500 text-lg" />
+                  Add to favorites
                 </button>
               )}
               {canEdit && (

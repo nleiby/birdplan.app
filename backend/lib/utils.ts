@@ -2,7 +2,7 @@ import { HTTPException } from "hono/http-exception";
 import type { Context } from "hono";
 import { auth } from "lib/firebaseAdmin.js";
 import { customAlphabet } from "nanoid";
-import type { Trip, TargetList, Hotspot } from "@birdplan/shared";
+import type { Trip, TargetList } from "@birdplan/shared";
 
 export const nanoId = (length: number = 16) => {
   return customAlphabet("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", length)();
@@ -79,15 +79,26 @@ const targetsToHtml = (targets: TargetList[], id?: string) => {
   return html;
 };
 
-const favsToHtml = (favs: Hotspot["favs"]) => {
-  if (!favs?.length) {
+type HotspotTargetItem = { code: string; name: string; percent: number };
+
+/** Favorites section HTML for KML placemark description (trip.targetStars + hotspot target items). */
+const favsToHtml = (trip: Trip, hotspotTargetItems: HotspotTargetItem[] | undefined) => {
+  const favCodes = trip?.targetStars ?? [];
+  if (!favCodes.length || !hotspotTargetItems?.length) {
     return "";
   }
-  const sortedFavs = favs.sort((a, b) => b.percent - a.percent);
+  const favsWithData = favCodes
+    .map((code) => {
+      const item = hotspotTargetItems.find((it) => it.code === code);
+      return item ? { code: item.code, name: item.name, percent: item.percent } : null;
+    })
+    .filter((it): it is { code: string; name: string; percent: number } => it != null);
+  if (!favsWithData.length) return "";
+  const sortedFavs = favsWithData.sort((a, b) => b.percent - a.percent);
   let html = "<b>Favorites</b><br/>";
   sortedFavs.forEach((it) => {
     const percent = it.percent > 1 ? Math.round(it.percent) : it.percent;
-    html += `<b>${it.name}</b> (${percent}% ${it.range})<br/>`;
+    html += `<b>${it.name}</b> (${percent}% Trip dates)<br/>`;
     const numBlocks = Math.round(percent / 10) * 1;
     const blocks = "🟩".repeat(numBlocks) + "⬜".repeat(10 - numBlocks);
     html += `<a href='merlinbirdid://species/${it.code}' style="text-decoration:none">${blocks} ℹ️</a><br/><br/>`;
@@ -95,6 +106,7 @@ const favsToHtml = (favs: Hotspot["favs"]) => {
   return html + "<br/><br/>";
 };
 
+/** Converts a trip and its target lists to GeoJSON for export (KML, etc.). */
 export const tripToGeoJson = (trip: Trip, targets: TargetList[]) => {
   const hotspots = trip?.hotspots || [];
   const markers = trip?.markers || [];
@@ -102,24 +114,27 @@ export const tripToGeoJson = (trip: Trip, targets: TargetList[]) => {
   const geojson = {
     type: "FeatureCollection",
     features: [
-      ...hotspots.map((it) => ({
-        type: "Feature",
-        properties: {
-          name: it.name,
-          description: `<b>Links</b><br/><a href=${getGooglePlaceUrl(
-            it.lat,
-            it.lng
-          )}>Directions</a> • <a href='https://ebird.org/targets?r1=${
-            it.id
-          }&bmo=1&emo=12&r2=world&t2=life'>Targets</a><br/><br/><b>Notes</b><br/>${
-            it.notes || "None"
-          }<br/><br/>${favsToHtml(it.favs)}${targetsToHtml(targets, it.targetsId)}<br/><br/>`,
-        },
-        geometry: {
-          type: "Point",
-          coordinates: [it.lng, it.lat],
-        },
-      })),
+      ...hotspots.map((it) => {
+        const hotspotTargetItems = targets.find((t) => t._id === it.targetsId)?.items;
+        return {
+          type: "Feature",
+          properties: {
+            name: it.name,
+            description: `<b>Links</b><br/><a href=${getGooglePlaceUrl(
+              it.lat,
+              it.lng
+            )}>Directions</a> • <a href='https://ebird.org/targets?r1=${
+              it.id
+            }&bmo=1&emo=12&r2=world&t2=life'>Targets</a><br/><br/><b>Notes</b><br/>${
+              it.notes || "None"
+            }<br/><br/>${favsToHtml(trip, hotspotTargetItems)}${targetsToHtml(targets, it.targetsId)}<br/><br/>`,
+          },
+          geometry: {
+            type: "Point",
+            coordinates: [it.lng, it.lat],
+          },
+        };
+      }),
       ...markers.map((it) => ({
         type: "Feature",
         properties: {

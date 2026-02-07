@@ -24,6 +24,7 @@ export type Trip = {
   startMonth: number;
   endMonth: number;
   imgUrl: string | null;
+  /** Species codes user marked as favorites (trip-wide). Replaces legacy per-hotspot favs. */
   targetStars?: string[];
   targetNotes?: {
     [key: string]: string;
