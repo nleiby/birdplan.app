@@ -71,3 +71,20 @@
 .mapboxgl-ctrl-attrib.mapboxgl-compact {
   @apply bg-gray-600/60 text-white;
 }
+
+/* Itinerary print: allow content to flow to multiple pages, hide chrome */
+@media print {
+  .itinerary-print-page {
+    height: auto !important;
+  }
+  .itinerary-print-page .itinerary-print-main,
+  .itinerary-print-page .itinerary-print-content {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+  .itinerary-print-page > *:nth-child(1),
+  .itinerary-print-page > *:nth-child(2) {
+    display: none !important;
+  }
+}

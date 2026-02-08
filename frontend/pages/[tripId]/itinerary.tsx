@@ -16,6 +16,7 @@ import { nanoId } from "lib/helpers";
 import ItineraryDay from "components/ItineraryDay";
 import dayjs from "dayjs";
 import { daysBetweenInclusive } from "@birdplan/shared";
+import { ItineraryPrintContext } from "providers/itinerary-print";
 
 export default function Itinerary() {
   const { user } = useUser();
@@ -26,10 +27,26 @@ export default function Itinerary() {
   const shouldDefaultEdit = !!(trip && !trip?.startDate) || !!(trip && !trip?.itinerary?.length);
   const [editing, setEditing] = React.useState(shouldDefaultEdit);
   const isEditing = canEdit && editing;
+  const [isPrintMode, setIsPrintMode] = React.useState(false);
 
   React.useEffect(() => {
     if (shouldDefaultEdit) setEditing(true);
   }, [shouldDefaultEdit]);
+
+  React.useEffect(() => {
+    const onAfterPrint = () => setIsPrintMode(false);
+    window.addEventListener("afterprint", onAfterPrint);
+    return () => window.removeEventListener("afterprint", onAfterPrint);
+  }, []);
+
+  const handlePrint = () => {
+    setIsPrintMode(true);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setTimeout(() => window.print(), 150);
+      });
+    });
+  };
 
   const setStartDateMutation = useTripMutation<{ startDate: string }>({
     url: `/trips/${trip?._id}/set-start-date`,
@@ -111,7 +128,7 @@ export default function Itinerary() {
   if (is404) return <NotFound />;
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full itinerary-print-page">
       {trip && (
         <Head>
           <title>{`${trip.name} | BirdPlan.app`}</title>
@@ -120,30 +137,42 @@ export default function Itinerary() {
 
       <Header title={trip?.name || ""} parent={{ title: "Trips", href: user?.uid ? "/trips" : "/" }} />
       <TripNav active="itinerary" />
-      <main className="flex h-[calc(100%-60px-55px)]">
-        <ErrorBoundary>
-          <div className="h-full grow flex sm:relative flex-col w-full">
-            <div className="h-full overflow-auto" onClick={handleDivClick}>
-              <div className="mt-2 sm:mt-8 max-w-2xl w-full mx-auto p-4 md:p-0">
-                <div className="sticky top-0 z-10 bg-white pb-2 mb-8 sm:mb-10 -mx-4 px-4 md:-mx-0 md:px-0">
-                  <div className="flex justify-between items-center">
-                    <h1 className="text-3xl font-bold text-gray-700">Trip Itinerary</h1>
-                    {canEdit && hasStartDate && (
-                      <Button
-                        size="smPill"
-                        color="pillOutlineGray"
-                        className="flex items-center gap-2 print:hidden"
-                        onClick={() => setEditing((prev) => !prev)}
-                      >
-                        {isEditing ? (
-                          <Icon name="check" className="w-4 h-4" />
-                        ) : (
-                          <Icon name="pencil" className="w-4 h-4" />
+      <ItineraryPrintContext.Provider value={{ isPrintMode }}>
+        <main className="flex h-[calc(100%-60px-55px)] itinerary-print-main">
+          <ErrorBoundary>
+            <div className="h-full grow flex sm:relative flex-col w-full">
+              <div className="h-full overflow-auto itinerary-print-content" onClick={handleDivClick}>
+                <div className="mt-2 sm:mt-8 max-w-2xl w-full mx-auto p-4 md:p-0">
+                  <div className="sticky top-0 z-10 bg-white pb-2 mb-8 sm:mb-10 -mx-4 px-4 md:-mx-0 md:px-0">
+                    <div className="flex justify-between items-center gap-2">
+                      <h1 className="text-3xl font-bold text-gray-700">Trip Itinerary</h1>
+                      <div className="flex items-center gap-2 print:hidden">
+                        <Button
+                          size="smPill"
+                          color="pillOutlineGray"
+                          className="flex items-center gap-2"
+                          onClick={handlePrint}
+                        >
+                          <Icon name="export" className="w-4 h-4" />
+                          <span>Print</span>
+                        </Button>
+                        {canEdit && hasStartDate && (
+                          <Button
+                            size="smPill"
+                            color="pillOutlineGray"
+                            className="flex items-center gap-2"
+                            onClick={() => setEditing((prev) => !prev)}
+                          >
+                            {isEditing ? (
+                              <Icon name="check" className="w-4 h-4" />
+                            ) : (
+                              <Icon name="pencil" className="w-4 h-4" />
+                            )}
+                            <span>{isEditing ? "Done" : "Edit"}</span>
+                          </Button>
                         )}
-                        <span>{isEditing ? "Done" : "Edit"}</span>
-                      </Button>
-                    )}
-                  </div>
+                      </div>
+                    </div>
                   {canEdit && !!trip?.startDate && isEditing && !editingStartDate && (
                     <Button
                       type="button"
@@ -202,7 +231,8 @@ export default function Itinerary() {
             </div>
           </div>
         </ErrorBoundary>
-      </main>
+        </main>
+      </ItineraryPrintContext.Provider>
     </div>
   );
 }
