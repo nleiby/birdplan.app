@@ -152,6 +152,24 @@ export default function Hotspot({ hotspot }: Props) {
     },
   });
 
+  type RemoveFromItineraryInput = { dayId: string; locationEntryId: string; dayIndex: number };
+  const removeFromItineraryMutation = useTanMutation<any, Error, RemoveFromItineraryInput>({
+    mutationFn: async ({ dayId, locationEntryId }) => {
+      await mutate("PATCH", `/trips/${trip?._id}/itinerary/${dayId}/remove-location`, {
+        id: locationEntryId,
+      });
+    },
+    onError: (err) => {
+      toast.error(err.message || "An error occurred");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: [`/trips/${trip?._id}`] });
+    },
+    onSuccess: (_data, { dayIndex }) => {
+      toast.success(`Removed from Day ${dayIndex}`);
+    },
+  });
+
   const handleSave = async () => {
     if (isSaved) {
       if (notes && !confirm("Are you sure you want to remove this hotspot from your trip? Your notes will be lost."))
@@ -280,7 +298,8 @@ export default function Hotspot({ hotspot }: Props) {
               {trip.itinerary.map((day, index) => {
                 const dayNumber = index + 1;
                 const stopCount = day.locations?.length ?? 0;
-                const isAlreadyOnDay = day.locations?.some((loc) => loc.locationId === id);
+                const locationEntry = day.locations?.find((loc) => loc.locationId === id);
+                const isAlreadyOnDay = !!locationEntry;
                 const dateLabel = trip?.startDate
                   ? dayjs(trip.startDate).add(index, "day").format("ddd, MMM D")
                   : null;
@@ -303,7 +322,21 @@ export default function Hotspot({ hotspot }: Props) {
                       {dateLabel && ` · ${dateLabel}`} ({stopCount} {stopCount === 1 ? "stop" : "stops"})
                     </span>
                     {isAlreadyOnDay ? (
-                      <span className="text-gray-400 text-xs">Already on Day {dayNumber}</span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          removeFromItineraryMutation.mutate({
+                            dayId: day.id,
+                            locationEntryId: locationEntry.id,
+                            dayIndex: dayNumber,
+                          })
+                        }
+                        disabled={removeFromItineraryMutation.isPending}
+                        className="text-gray-500 text-xs hover:text-sky-600 hover:underline disabled:opacity-60"
+                        title="Remove from Day"
+                      >
+                        Already on Day {dayNumber}
+                      </button>
                     ) : (
                       <button
                         type="button"
