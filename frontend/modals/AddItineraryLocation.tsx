@@ -10,25 +10,54 @@ import clsx from "clsx";
 
 type Props = {
   dayId: string;
+  insertAfterId?: string | null;
 };
 
 const nameCompare = (a: { name: string }, b: { name: string }) =>
   a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
 
-export default function AddItineraryLocation({ dayId }: Props) {
+type AddLocationPayload = { type: "hotspot" | "marker"; locationId: string; id: string; insertAfterId?: string | null };
+
+type LocationEntry = { id: string; type: "hotspot" | "marker"; locationId: string };
+
+function insertLocationAt<T extends LocationEntry>(
+  locations: T[],
+  newEntry: LocationEntry,
+  insertAfterId: string | null | undefined
+): (T | LocationEntry)[] {
+  if (insertAfterId === null) {
+    return [newEntry, ...locations];
+  }
+  if (typeof insertAfterId === "string") {
+    const idx = locations.findIndex((loc) => loc.id === insertAfterId);
+    if (idx === -1) return [...locations, newEntry];
+    return [...locations.slice(0, idx + 1), newEntry, ...locations.slice(idx + 1)];
+  }
+  return [...locations, newEntry];
+}
+
+export default function AddItineraryLocation({ dayId, insertAfterId }: Props) {
   const { close } = useModal();
   const { trip } = useTrip();
 
-  const addDayMutation = useTripMutation<{ type: "hotspot" | "marker"; locationId: string; id: string }>({
+  const addDayMutation = useTripMutation<AddLocationPayload>({
     url: `/trips/${trip?._id}/itinerary/${dayId}/add-location`,
     method: "POST",
     mutationKey: [`/trips/${trip?._id}/itinerary/${dayId}/add-location`],
-    updateCache: (old, input) => ({
-      ...old,
-      itinerary:
-        old.itinerary?.map((it) => (it.id === dayId ? { ...it, locations: [...(it.locations || []), input] } : it)) ||
-        [],
-    }),
+    updateCache: (old, input) => {
+      const { insertAfterId: _ins, ...rest } = input;
+      const locationEntry: LocationEntry = { type: rest.type, locationId: rest.locationId, id: rest.id };
+      const position = _ins !== undefined ? _ins : insertAfterId;
+      return {
+        ...old,
+        itinerary:
+          old.itinerary?.map((it) =>
+            it.id === dayId
+              ? { ...it, locations: insertLocationAt(it.locations || [], locationEntry, position) }
+              : it
+          ) || [],
+      };
+    },
   });
 
   const sortedMarkers = React.useMemo(
@@ -58,7 +87,12 @@ export default function AddItineraryLocation({ dayId }: Props) {
                 <button
                   className="flex items-center gap-2 text-sm cursor-pointer text-gray-700 w-full"
                   onClick={() => {
-                    addDayMutation.mutate({ type: "marker", locationId: marker.id, id: nanoId(6) });
+                    addDayMutation.mutate({
+                      type: "marker",
+                      locationId: marker.id,
+                      id: nanoId(6),
+                      ...(insertAfterId !== undefined && { insertAfterId }),
+                    });
                     close();
                   }}
                 >
@@ -81,7 +115,12 @@ export default function AddItineraryLocation({ dayId }: Props) {
                       isOnItinerary && "bg-sky-50"
                     )}
                     onClick={() => {
-                      addDayMutation.mutate({ type: "hotspot", locationId: hotspot.id, id: nanoId(6) });
+                      addDayMutation.mutate({
+                        type: "hotspot",
+                        locationId: hotspot.id,
+                        id: nanoId(6),
+                        ...(insertAfterId !== undefined && { insertAfterId }),
+                      });
                       close();
                     }}
                   >

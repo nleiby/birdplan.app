@@ -253,6 +253,8 @@ export type AddLocationInput = {
   type: "hotspot" | "marker";
   locationId: string;
   id: string;
+  /** Omitted/undefined = append; null = insert at start; string = insert after that location id */
+  insertAfterId?: string | null;
 };
 
 export type CalcTravelTimeInput = {

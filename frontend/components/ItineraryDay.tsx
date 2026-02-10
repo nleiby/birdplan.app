@@ -163,6 +163,17 @@ export default function ItineraryDay({ day, isEditing }: PropsT) {
       {locations?.some((loc) => loc.type === "hotspot") && <DayImportantTargets day={day} />}
       {!!locations?.length && (
         <ul className="flex flex-col">
+          {isEditing && (
+            <li className="py-1">
+              <button
+                type="button"
+                onClick={() => open("addItineraryLocation", { dayId: day.id, insertAfterId: null })}
+                className="text-xs text-sky-600 hover:underline font-medium"
+              >
+                + Add here
+              </button>
+            </li>
+          )}
           {locations?.map(({ locationId, type, id }, index) => {
             const location =
               trip?.hotspots?.find((h) => h.id === locationId) || trip?.markers?.find((m) => m.id === locationId);
@@ -246,6 +257,17 @@ export default function ItineraryDay({ day, isEditing }: PropsT) {
                     </div>
                   )}
                 </li>
+                {isEditing && (
+                  <li className="py-1">
+                    <button
+                      type="button"
+                      onClick={() => open("addItineraryLocation", { dayId: day.id, insertAfterId: id })}
+                      className="text-xs text-sky-600 hover:underline font-medium"
+                    >
+                      + Add here
+                    </button>
+                  </li>
+                )}
               </React.Fragment>
             );
           })}

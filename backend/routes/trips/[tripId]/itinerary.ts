@@ -216,11 +216,27 @@ itinerary.post("/:dayId/add-location", async (c) => {
   const day = trip.itinerary?.find((it) => it.id === dayId);
   if (!day) throw new HTTPException(404, { message: "Day not found" });
 
+  const currentLocations = day.locations || [];
+  let newLocations: typeof currentLocations;
+  const { insertAfterId, ...locationEntry } = data;
+  if (insertAfterId === null) {
+    newLocations = [locationEntry, ...currentLocations];
+  } else if (typeof insertAfterId === "string") {
+    const idx = currentLocations.findIndex((loc) => loc.id === insertAfterId);
+    if (idx === -1) {
+      newLocations = [...currentLocations, locationEntry];
+    } else {
+      newLocations = [...currentLocations.slice(0, idx + 1), locationEntry, ...currentLocations.slice(idx + 1)];
+    }
+  } else {
+    newLocations = [...currentLocations, locationEntry];
+  }
+
   const updatedDay = await updateDayTravelTimes(
     trip as any,
     {
       ...day,
-      locations: [...(day.locations || []), data],
+      locations: newLocations,
     } as any
   );
 
