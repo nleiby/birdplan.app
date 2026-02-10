@@ -74,6 +74,9 @@
 
 /* Itinerary print: allow content to flow to multiple pages, hide chrome */
 @media print {
+  @page {
+    margin: 1cm;
+  }
   .itinerary-print-page {
     height: auto !important;
   }
@@ -86,5 +89,18 @@
   .itinerary-print-page > *:nth-child(1),
   .itinerary-print-page > *:nth-child(2) {
     display: none !important;
+  }
+  .itinerary-print-page .itinerary-day {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .itinerary-print-page .itinerary-location-card {
+    box-shadow: none;
+    border: 1px solid #e5e7eb;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .itinerary-print-page .marker-with-icon {
+    box-shadow: none;
   }
 }

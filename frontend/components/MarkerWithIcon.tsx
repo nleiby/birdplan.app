@@ -17,7 +17,7 @@ export default function MarkerWithIcon({ icon, darkIcon, color, showStroke = tru
   return (
     <div
       className={clsx(
-        "relative cursor-pointer shadow w-[25px] h-[25px] rounded-full inline-flex items-center justify-center",
+        "marker-with-icon relative cursor-pointer shadow w-[25px] h-[25px] rounded-full inline-flex items-center justify-center",
         showStroke && "border-white border-2",
         className
       )}

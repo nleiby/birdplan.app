@@ -126,7 +126,7 @@ export default function ItineraryDay({ day, isEditing }: PropsT) {
   const hasTotalTravel = totalTravel && totalTravel.time > 0;
 
   return (
-    <div className="mb-8">
+    <div className="mb-8 itinerary-day">
       <div className="mb-3">
         <div className="flex flex-col">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -185,7 +185,7 @@ export default function ItineraryDay({ day, isEditing }: PropsT) {
                     <TravelTime isLoading={isLoading} isEditing={isEditing} dayId={day.id} id={id} />
                   </li>
                 )}
-                <li className="flex items-start gap-2 text-sm text-gray-700 group relative p-3 bg-white rounded-lg shadow">
+                <li className="itinerary-location-card flex items-start gap-2 text-sm text-gray-700 group relative p-3 bg-white rounded-lg shadow">
                   <button
                     className="flex gap-2 text-left -my-[9px] py-3 -ml-4 pl-4 grow"
                     onClick={
