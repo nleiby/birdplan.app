@@ -147,7 +147,10 @@ export default function TravelTime({ isEditing, dayId, id, isLoading }: Props) {
         <a
           href={`https://www.google.com/maps/dir/?api=1&origin=${marker1?.lat},${marker1?.lng}&destination=${marker2?.lat},${marker2?.lng}&travelmode=${travelData?.method}`}
           target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2"
         >
+          <span className="hidden print:inline text-[13px] text-[#c2410d] font-medium">Directions</span>
           {!travelData?.isDeleted && <div className="text-gray-500 text-xs relative">{TravelInfo}</div>}
         </a>
       )}

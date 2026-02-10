@@ -137,9 +137,9 @@ export default function ItineraryDay({ day, isEditing }: PropsT) {
                 href={fullDayRouteUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-[13px] text-[#c2410d] hover:underline print:hidden"
+                className="inline-flex items-center gap-1.5 text-[13px] text-[#c2410d] hover:underline"
               >
-                <Icon name="directions" className="text-[#c2410d]" />
+                <Icon name="directions" className="text-[#c2410d] print:hidden" />
                 Drive full route
               </a>
             )}
@@ -205,8 +205,19 @@ export default function ItineraryDay({ day, isEditing }: PropsT) {
                       )}
                     </span>
                   </button>
+                  {type === "hotspot" && locationId && (
+                    <a
+                      href={`https://ebird.org/hotspot/${locationId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-shrink-0 self-center"
+                      title="View on eBird"
+                    >
+                      <img src="/ebird.png" alt="eBird" width={32} height={32} className="block" />
+                    </a>
+                  )}
                   {isEditing && (
-                    <div className="flex items-center gap-1.5 ml-auto">
+                    <div className="flex items-center gap-1.5 ml-auto print:hidden">
                       {index !== locations.length - 1 && (
                         <button
                           type="button"
@@ -241,7 +252,7 @@ export default function ItineraryDay({ day, isEditing }: PropsT) {
         </ul>
       )}
       {isEditing && (
-        <div className="flex justify-between items-center gap-2 mt-3">
+        <div className="flex justify-between items-center gap-2 mt-3 print:hidden">
           <Button size="xs" color="gray" onClick={() => open("addItineraryLocation", { dayId: day.id })}>
             + Add Location
           </Button>
