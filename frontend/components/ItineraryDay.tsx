@@ -15,7 +15,7 @@ import useTripMutation from "hooks/useTripMutation";
 import { useMutationState } from "@tanstack/react-query";
 import { Day } from "@birdplan/shared";
 import { removeInvalidTravelData, moveLocation } from "lib/itinerary";
-import { getGoogleMapsFullDayRouteUrl, formatTime, formatDistance } from "lib/helpers";
+import { getGoogleMapsFullDayRouteUrl, getGoogleStaticMapRouteUrl, formatTime, formatDistance } from "lib/helpers";
 import DayImportantTargets from "components/DayImportantTargets";
 
 type PropsT = {
@@ -111,6 +111,7 @@ export default function ItineraryDay({ day, isEditing }: PropsT) {
       .filter((loc): loc is { lat: number; lng: number } => loc != null && "lat" in loc && "lng" in loc)
       .map((loc) => ({ lat: loc.lat, lng: loc.lng })) ?? [];
   const fullDayRouteUrl = getGoogleMapsFullDayRouteUrl(dayRoutePoints);
+  const staticMapUrl = getGoogleStaticMapRouteUrl(dayRoutePoints);
 
   const totalTravel = locations?.reduce(
     (acc, loc) => {
@@ -153,6 +154,15 @@ export default function ItineraryDay({ day, isEditing }: PropsT) {
             )}
           </div>
         </div>
+        {staticMapUrl && (
+          <div className="hidden print:block my-3 itinerary-day-route-map">
+            <img
+              src={staticMapUrl}
+              alt={`Day ${dayIndex + 1} route`}
+              className="w-full max-w-[550px] h-auto rounded border border-gray-200"
+            />
+          </div>
+        )}
         <InputNotesSimple
           value={notes}
           onBlur={(value) => setNotesMutation.mutate({ notes: value })}
