@@ -158,3 +158,23 @@ export function getGoogleMapsFullDayRouteUrl(
   if (waypoints) params.set("waypoints", waypoints);
   return `https://www.google.com/maps/dir/?${params.toString()}`;
 }
+
+/** Google Static Maps URL for a day's route: path through points + markers. For at-a-glance print overview. */
+export function getGoogleStaticMapRouteUrl(
+  points: { lat: number; lng: number }[],
+  size: { width: number; height: number } = { width: 550, height: 250 }
+): string | null {
+  if (points.length === 0) return null;
+  const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
+  if (!key) return null;
+  const params = new URLSearchParams();
+  params.set("size", `${size.width}x${size.height}`);
+  params.set("key", key);
+  params.set("scale", "2"); // retina
+  const pathSegment = points.map((p) => `${p.lat},${p.lng}`).join("|");
+  if (points.length >= 2) {
+    params.set("path", `color:0x1e40af|weight:4|${pathSegment}`);
+  }
+  params.set("markers", pathSegment);
+  return `https://maps.googleapis.com/maps/api/staticmap?${params.toString()}`;
+}
