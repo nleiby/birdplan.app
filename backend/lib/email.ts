@@ -7,7 +7,8 @@ const QUOTA_NOTIFY_BUCKETS = [0.5, 0.7, 0.8, 0.9, 0.95, 1.0];
 const RESEND_DAILY_LIMIT = 100;
 const RESEND_MONTHLY_LIMIT = 3000;
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let resendClient: Resend | undefined;
+const getResend = () => (resendClient ??= new Resend(process.env.RESEND_API_KEY));
 
 type Props = {
   to: string;
@@ -43,7 +44,7 @@ export const sendEmail = async ({ to, subject, html, replyTo }: Props) => {
     return;
   }
 
-  const { error, headers } = await resend.emails.send({
+  const { error, headers } = await getResend().emails.send({
     from: "BirdPlan.app <support@birdplan.app>",
     to,
     subject,
