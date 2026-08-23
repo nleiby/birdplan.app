@@ -28,15 +28,55 @@ Rebasing or merging the fork onto upstream is not viable:
 
 Of the 28 files the fork touched, 6 no longer exist upstream, and the 22 survivors were substantially rewritten (`TargetRow.tsx` +115/−236, `ItineraryDay.tsx` +273/−123, `targets.tsx` +238/−170, `backend/routes/trips/[tripId]/index.ts` +195/−99, `shared/types.ts` +280/−49). Conflict resolution would mean hand-rewriting each hunk anyway — with none of the safety of doing it deliberately.
 
-**So: reset onto upstream `main` and re-land features one at a time.**
+**So: build on upstream `main` and re-land features one at a time.**
 
-Setup note: `refs/remotes/upstreamlocal/main` has been fetched into this repo from the local upstream clone, so you can diff both trees without leaving the fork:
+## Working setup
 
+Two checkouts, no GitHub changes, no rewriting of this repo's history:
+
+- **`~/repos/rawcomposition/birdplan.app`** — the port working copy. Already configured: `upstream` = rawcomposition (push disabled), `origin` = `nleiby/birdplan.app`, `main` tracks `upstream/main`, and `gh repo set-default nleiby/birdplan.app` is set so `gh pr create` can't accidentally open a PR on rawcomposition (the mistake behind closed PR #42).
+- **`~/repos/birdplan.app`** — this repo. Frozen reference implementation. Do not reset, rename, or force-push it; PRs are branch-to-branch, so its diverged `main` is harmless.
+
+No `personal` integration branch: the old app isn't being kept running, so each feature is verified against upstream's stack directly.
+
+Per PR, from the port working copy:
+
+```bash
+git switch main && git fetch upstream && git merge --ff-only upstream/main
+git switch -c up/NN-slug main
+# ...port...
+npm run lint && npm run typecheck
+git push -u origin up/NN-slug
+gh pr create --repo rawcomposition/birdplan.app --base main --head nleiby:up/NN-slug
 ```
-git fetch /Users/nick.leiby/repos/rawcomposition/birdplan.app main:refs/remotes/upstreamlocal/main
-git diff 7497116..HEAD -- <path>              # what the fork changed
-git show upstreamlocal/main:<path>            # what upstream has now
+
+Reading the old implementation while porting, from the port working copy (`origin/*` refs are the fork's branches):
+
+```bash
+git show origin/main:<path>                              # the fork's version
+git diff upstream/main:<path> origin/main:<path>         # side by side
 ```
+
+### Running upstream locally
+
+Full setup, seeding, and per-PR verification steps: **[LOCAL-DEV.md](./LOCAL-DEV.md)**. In brief — there is no `.env.example`; you need `MONGO_URI`, `EBIRD_API_KEY`, `OPENBIRDING_API_URL`, `MAPBOX_SERVER_KEY`, `FRONTEND_URL`, `CORS_ORIGINS` (backend) and `VITE_API_URL`, `VITE_MAPBOX_KEY`, `VITE_OPENBIRDING_API_URL`, `VITE_URL` (frontend). `RESEND_API_KEY`, `DEEPL_KEY`, `NTFY_TOPIC`, and the `S3_*` set are optional in dev.
+
+- **Login needs no email provider.** `backend/lib/email.ts` short-circuits when `NODE_ENV !== "production"` and prints the message to stdout — request an OTP, read the 6-digit code from the backend console.
+- **Use a fresh Mongo database.** The fork's data is pre-migration (`Profile`, `Trip.userIds`, `TargetList`); upstream expects `User`, `Participant`, `Session`. This also means the favorites migration (feature #2) can't be exercised against real data until you decide what to do with your existing trips.
+- **`OPENBIRDING_API_URL` can't be inferred** from the repo, and every targets feature needs it. Asking rawcomposition how to set up local dev is a natural first contact, given their standing "I'm down for it!" invitation on PR #42.
+
+## Source branches
+
+Most of the work is on the fork's `main`. Two branches hold commits that aren't:
+
+| Branch | Unique commits | Verdict |
+|---|---|---|
+| `main` | — | The polished versions. Port from here. |
+| `itinerary_updates_output` | 7 (12 files, +286/−51) | **Live work.** Remove-from-day on the hotspot modal → feature #8. Print static maps / formatting / hotspot links → feature #16. Insert-at-position → superseded, see [Do not port](#do-not-port). |
+| `hotspot_evaluation` | 21 (19 files, +1,427/−203) | **Drafts.** Earlier versions of what's now on `main`, plus a Python prototype. Nothing to port; see [Do not port](#do-not-port). |
+| `ui_work` | 0 | Fully contained in `main`. Ignore. |
+
+The `pr/1`…`pr/8` branches are bookmarks into `main`'s history from an earlier splitting attempt, all fully contained in `main`. `pr/1-itinerary-day-fix` is upstream PR #41, merged — it's the merge base this document measures from.
 
 ## House rules — apply to every port, not just to PRs
 
@@ -49,7 +89,7 @@ Upstream ships `CLAUDE.md`, `DESIGN.md`, a CI workflow (`npm run lint` + `npm ru
 | **No code comments.** "Code should be self-explanatory — do not write code comments." Reserved for upstream-bug hacks, non-obvious regex, undocumented workarounds. Stated in `CLAUDE.md` and repeated three times in the review skill. | Commit `8ce5ffc` *added docstrings as a feature*. `coverage.ts` — the single most-documented file in the fork — `DayImportantTargets.tsx`, `Mapbox.tsx`, and the backend routes are all JSDoc'd. **Strip every comment.** |
 | **Prefer derivation, lazy init, and custom hooks over `useEffect`/`useMemo`.** Flagged as a "STRONG project rule" and priority #8 in the review rubric. | `DayImportantTargets` has six `React.useMemo`s; `useFetchSpeciesObs`, `targets.tsx` sorting, and `AddItineraryLocation` add more. Most are cheap derivations that don't need memoizing; the genuinely expensive ones belong in a custom hook. |
 | **Trip mutations go through `useTripMutation`** with an `updateCache(old, input)` reducer. Manual `setQueryData` that bypasses it is priority #7. | "Add to itinerary" in `Hotspot.tsx` hand-rolls TanStack `useMutation` with its own `onMutate`/`onError`/`onSettled` optimistic cache. |
-| **No raw palette classes** (ESLint guardrail, `e99e922`) — semantic tokens only. | `text-sky-600`, `bg-amber-50/80`, `text-pink-700`, `bg-[#1c6900]`, `text-[#c2410d]` throughout. CI will fail. |
+| **Semantic tokens, not raw palette classes.** The ESLint guardrail (`e99e922`) is narrower than the convention: `no-restricted-syntax` fails only on literals matching `(gray\|slate\|zinc\|neutral\|stone)-[0-9]` or `bg-white`. The rest is `DESIGN.md` convention, enforced by review rather than CI. | `text-gray-500`, `border-gray-100`, `bg-white` **fail CI**. `text-sky-600`, `bg-amber-50/80`, `text-pink-700`, `bg-[#1c6900]`, `text-[#c2410d]` pass lint but will draw review comments — convert them anyway. |
 
 Also: React Query keys are URL-shaped; backend imports need `.js` extensions (NodeNext ESM); protected handlers call `authenticate(c)` explicitly (there is no middleware) and gate ownership with `isTripEditor`; prefer atomic Mongo operators over read-modify-write; and any `shared/types.ts` change is reviewed against both persisted Mongo data and the IndexedDB-persisted React Query cache (`QUERY_CACHE_BUSTER`).
 
@@ -110,9 +150,9 @@ Land these first. Each is independently shippable.
 **Prep:** name the 11-stop cap as a constant (`GOOGLE_MAPS_MAX_STOPS`) rather than commenting it; derive the total inline — it's a reduce over a handful of items, no `useMemo`; place it in their `CardHeader`, not the fork's flex row; semantic tokens, not `text-[#c2410d]`.
 
 ### 5. Saved-hotspot marker icon + `MarkerWithIcon` color prop
-**Fork:** `5c47e7c`, `54ab31e`, `e236c89`, `f7b2e1b`, `2a677ef` · `MarkerWithIcon.tsx`, `lib/icons.ts` · **Upstream: PR 1 + PR 3 (Wave 1)**
+**Fork:** `5c47e7c`, `54ab31e`, `e236c89`, `f7b2e1b`, `2a677ef` · `MarkerWithIcon.tsx`, `lib/icons.ts` · **Upstream: PR 3 (Wave 1)**
 **Portability: high.** `lib/icons.ts` and `MarkerWithIcon` both survive upstream (upstream added lucide *alongside* the custom `Icon`, it didn't replace it). Port: rename `markerColos` → exported `markerIconColors` (also fixes the typo), add `lightGray`, add the optional `color` override prop, show the marker glyph next to saved hotspot names, and use light gray for hotspots not on the itinerary.
-**Split for upstreaming:** the rename + `color` prop is a pure enabling refactor (PR 1); the visual usages are the behavior change (PR 3).
+**Note for the PR:** upstream's `MarkerWithIcon` already declares `color?: string` in its `Props` and then never destructures it — the style block hardcodes `iconData.color`, so any caller passing `color` is silently ignored. No caller does today, so it's dead rather than broken. Wiring it up is the first commit of this PR; say so in the body and offer to delete the prop instead if they'd prefer.
 **Synergy:** upstream's `SpeciesHotspotList` already carries a `saved: boolean` per row — same concept, different surface. Consider unifying rather than adding a second visual language for "saved".
 
 ### 6. CSV export of the target list
@@ -131,9 +171,10 @@ Land these first. Each is independently shippable.
 
 ## Tier 2 — needs redesign against upstream's UI
 
-### 8. "Add to itinerary" from the hotspot modal
-**Fork:** `2856289`, `77074c3`, `c4ca4a5` · `frontend/modals/Hotspot.tsx` (+~60) · **Upstream: PR 10 (Wave 2)**
-**Portability: medium. High user value — upstream has no equivalent** (today you can only add locations from the itinerary page). The endpoint exists: `POST /trips/:id/itinerary/:dayId/add-location`.
+### 8. Add / remove itinerary days from the hotspot modal
+**Fork:** `2856289`, `77074c3`, `c4ca4a5` (add) on `main`; `0cf14b0` (remove) on `itinerary_updates_output` · `frontend/modals/Hotspot.tsx` (+~95) · **Upstream: PR 10 (Wave 2)**
+**Portability: medium. High user value — upstream has no equivalent** (today you can only add locations from the itinerary page). Both endpoints exist: `POST /trips/:id/itinerary/:dayId/add-location` and `PATCH .../remove-location`.
+**Bundle add and remove.** They're the same control on the same surface — the remove path just turns the inert "Already on Day N" label into a button. Shipping add-only would leave an obvious dead end. The remove half lives on a different branch (see [Source branches](#source-branches)) and needs the same two rewrites.
 **Two rewrites are mandatory.** (1) Replace the hand-rolled TanStack `useMutation` + manual `setQueryData` with `useTripMutation`, which already does optimistic updates and rollback. (2) Days are now **derived from `trip.startDate`/`endDate`, not stored** — `trip.itinerary` is sparse and back-filled server-side by `densifyItinerary(itinerary, dayIds)`. The fork's `trip.itinerary.map((day, index) => ...)` would silently skip every unpersisted day. Replicate the `renderDays`/`dayIds` derivation from upstream `frontend/pages/[tripId]/itinerary.tsx:20-25` and pass `dayIds` in the mutation body.
 
 ### 9. Species observation map: recency coloring
@@ -143,6 +184,12 @@ Land these first. Each is independently shippable.
 **Simplify before porting.** The fork aggregates `reportCount`/`totalCount` per location and then never meaningfully uses them, because — as its own comment notes — the eBird endpoint returns one entry per location. Delete that aggregation. Move the remaining derivation out of `useMemo` into the hook body.
 **Must change:** the map moved into `components/SpeciesMapOverlay`, not an inline `<MapBox>` on the targets page. Legend colors from semantic tokens (the ESLint rule will reject `bg-[#555]`).
 **Defer:** the frequency half (`getFrequencyColorIndex`, `hasFrequencyData`, saved-vs-unsaved dual legend, the cyan `#0891b2` selected-hotspot halo) to Tier 3.
+
+### 16. Static day maps in the itinerary print view
+**Fork:** `830897c`, `a57ee52`, `5e3a42b`, `339f1d3`, `c871fe1` on `itinerary_updates_output` · **Upstream: Wave 2 candidate, needs a rewrite first**
+**Portability: medium — the idea travels, the implementation doesn't.** A per-day static route map, tighter print formatting, and hotspot links from print mode. Upstream built its own print view in the meantime (`2a25764` day cards + print, `8ae525f` travel times on printed itineraries), so **diff the two before porting anything** — the formatting work is probably already done, and only the static map and the hotspot links are additive.
+**Blocked as written:** `getGoogleStaticMapRouteUrl` uses the Google Static Maps API via `NEXT_PUBLIC_GOOGLE_MAPS_KEY`. Upstream **deliberately dropped the Google Maps dependency** (`b2d525d` — Places replaced with Photon, Maps JS API removed). Rewrite against the **Mapbox Static Images API**: upstream already has `MAPBOX_SERVER_KEY` and already renders Mapbox static region images to R2, so the plumbing exists.
+**Also:** `frontend/providers/itinerary-print.tsx` is a React context; upstream deleted `providers/` for zustand stores. Print state is almost certainly plain derivation — don't port a provider for it.
 
 ---
 
@@ -196,6 +243,9 @@ See #6. Needs the coverage map to enumerate species across saved hotspots with a
 | Sticky itinerary edit button (`0aeba94`) | The itinerary header was fully redesigned (`2a25764`). Re-add as a one-line `sticky` if you still want it — don't port the diff. |
 | `BestTargetHotspots.tsx` | Deleted upstream; superseded by the species detail page's Top Hotspots list. See #10. |
 | Sort/show hotspot percentages in `HotspotTargets` (`9f9c897`) | `HotspotTargets` was rewritten with its own sorting and `FrequencyBar` display. Diff the two before assuming anything is missing. |
+| Insert a location at an arbitrary position in a day (`e7f06cc`, `insertAfterId` on `AddLocationInput`) | Largely superseded — upstream added drag-to-reorder (`2a25764`, `ReorderLocationsInput`, `c06be56`). Add-then-drag covers the need, and this would widen a shared type for marginal gain. |
+| `scripts/best_hotspots.py` + `requirements.txt` (`924379b`, `f8e24c2`, `9ab738d` on `hotspot_evaluation`) | Offline Python prototype for best-hotspot analysis. Upstream has no Python; `backend/scripts/` is `tsx`. Keep as personal reference. |
+| Everything else on `hotspot_evaluation` | Earlier drafts of features later polished into fork `main` — coverage logic before it was extracted to `coverage.ts`, `DayImportantTargets` v1, the first heatmap pass, weighted average v1. Port from `main`, not from here. |
 
 ---
 
@@ -220,18 +270,19 @@ The architectural blocker above. Frame it as a question about their intent, with
 
 ## Wave 1 — send now, no product opinion required
 
-Five PRs. Each is a pure addition or an unambiguous fix, well under 200 lines, and needs no decision from the owner. PR 1 is deliberately trivial as an icebreaker that establishes you follow the conventions.
+Four PRs. **Every PR must be a unit of functionality** — something a user can see or a bug that's fixed. No enabling-refactor PRs: a change with no caller does nothing, reads as speculative generality, and lands squarely on the "dead code" line of the maintainer's own review rubric. Enabling changes ride along in the PR that first needs them, as a separate *commit*.
+
+PR numbers are stable labels for cross-referencing, not a send order.
 
 | PR | Title | Files | Ports feature |
 |---|---|---|---|
-| **1** | `refactor: export marker icon colors, allow per-instance override` | `lib/icons.ts`, `MarkerWithIcon.tsx` (~15 lines) | #5 (enabling half) |
-| **2** | `feat: show total travel time and a full-route directions link per itinerary day` | `lib/helpers.ts`, `ItineraryDay.tsx` (~50) | #4 |
-| **3** | `feat: distinguish saved hotspots and itinerary stops in the location list` | `ItineraryDay.tsx`, `Hotspot.tsx` (~40) | #5 (visual half) + #7 sort/highlight |
+| **2** | `feat: show total travel time and a full-route directions link per itinerary day` | `lib/helpers.ts`, `ItineraryDay.tsx` (~50 lines) | #4 |
+| **3** | `feat: distinguish saved hotspots and itinerary stops in the location list` | `lib/icons.ts`, `MarkerWithIcon.tsx`, `ItineraryDay.tsx`, `Hotspot.tsx` (~55) | #5 + #7 sort/highlight |
 | **4** | `feat: export the target list as CSV` | new `hooks/useDownloadTargetsCsv.ts`, `targets.tsx` (~70) | #6 (region scope only) |
 | **5** | `fix: keep the hotspot modal open when clicking map markers` | `hooks/useCloseOnOutsideClick.ts` (~2) | #7 — **only if it still repros** |
 
-**PR 1 first:** ~15 lines, zero risk, mechanical, and it fixes a typo. It proves out the review loop and lands the primitive PR 3 depends on.
-**PR 3 groups four one-liners** that are individually too small to justify a review round-trip and are all the same idea — *make it obvious which locations are already in your plan*. Mention that `SpeciesHotspotList` already carries a `saved` flag and offer to reuse whatever visual language they prefer.
+**Send PR 2 first.** Small, purely additive, visibly useful, and it extends work the maintainer just did (`8ae525f` put travel times on printed itineraries). A good first impression doesn't require a trivial PR — it requires a clean one.
+**PR 3 groups four one-liners** that are individually too small to justify a review round-trip and are all the same idea — *make it obvious which locations are already in your plan*. Structure it as two commits: (1) export `markerIconColors`, add `lightGray`, and honor the already-declared-but-ignored `color` prop on `MarkerWithIcon`; (2) the four usages. Mention that `SpeciesHotspotList` already carries a `saved` flag and offer to reuse whatever visual language they prefer.
 **Conflict:** PRs 2 and 3 both touch `ItineraryDay.tsx`. Land 2, then rebase 3.
 **Skip:** the `title` attribute on `MapButton` (use `ui/tooltip` inside another PR) and the map hint text (a copy choice — let it ride along or drop it).
 
@@ -243,7 +294,7 @@ Five PRs. Each is a pure addition or an unambiguous fix, well under 200 lines, a
 | **7** | `feat: read favorites from trip.targetStars in the hotspot modal` | #1 | Vocabulary change goes in a separate cosmetic PR |
 | **8** | `feat: export favorites from targetStars in the KML/GeoJSON download` | #3 | Backend-only, no auth surface |
 | **9** | `feat: color species observations by recency on the map` | #9 | Not blocked on Issue B |
-| **10** | `feat: add a hotspot to an itinerary day from the hotspot modal` | #8 | Send last — most likely to attract design feedback |
+| **10** | `feat: add and remove itinerary days from the hotspot modal` | #8 | Send last — most likely to attract design feedback |
 
 ## Wave 3 — gated on Issue B
 
@@ -268,7 +319,7 @@ Everything in [Do not port](#do-not-port), plus:
 
 ## Combined sequence
 
-1. Reset a working branch to upstream `main`.
+1. Work from the port checkout described in [Working setup](#working-setup); get upstream running locally first, since there's no test suite and no personal build to compare against.
 2. **Open Issues A, B, C** — B first, it has the longest lead time and gates the most work.
 3. **Port and submit Wave 1** (features #4, #5, #6, #7) — independent, each a reviewable PR.
 4. **Port Tier 2 / submit Wave 2** (features #1, #2, #3, #8, #9) as the issue responses land.
