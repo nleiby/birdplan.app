@@ -22,7 +22,8 @@ const queryClient = new QueryClient({
       staleTime: 5 * 60 * 1000,
       queryFn: async ({ queryKey, meta }) => {
         const url = queryKey[0] as string;
-        const isApiRoute = url.startsWith("/") && !url.startsWith(import.meta.env.VITE_OPENBIRDING_API_URL || "");
+        const openBirdingUrl = import.meta.env.VITE_OPENBIRDING_API_URL;
+        const isApiRoute = url.startsWith("/") && !(openBirdingUrl && url.startsWith(openBirdingUrl));
         const fullUrl = isApiRoute ? `${import.meta.env.VITE_API_URL}${url}` : url;
         return get(fullUrl, (queryKey[1] || {}) as any, !!meta?.showLoading);
       },
