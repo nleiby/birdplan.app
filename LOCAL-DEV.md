@@ -14,7 +14,10 @@ Companion to [PORTING.md](./PORTING.md).
 
 - **Node 22** (`.nvmrc`) — `nvm use`
 - **`npm ci` at the repo root.** It's an npm workspaces monorepo (`frontend`, `backend`, `shared`); do not install per-workspace.
-- **MongoDB** — a local `mongod` or a free Atlas cluster. Mongoose creates collections and indexes on first write, so an empty database is fine.
+- **MongoDB** — Mongoose creates collections and indexes on first write, so an empty database is fine. Via Docker:
+  ```bash
+  docker run -d --name mongo-generic -p 27017:27017 mongo:7
+  ```
 
 > **Use a brand-new database.** The fork's data is pre-migration — `Profile`, `Trip.userIds`, `TargetList` — and upstream expects `User`, `Participant`, `Session`. Pointing this at your old data will not work, and this is also why the favorites migration (PORTING.md feature #2) can't be exercised against real trips yet.
 
@@ -25,7 +28,8 @@ Companion to [PORTING.md](./PORTING.md).
 | eBird API key | [ebird.org/api/keygen](https://ebird.org/api/keygen) — free, instant | **Yes** — hotspots, recent species, and the taxonomy endpoint all proxy through it |
 | Mapbox tokens | Mapbox account; a public `pk.…` for the client and a token for server-side region images | **Yes** for the client key — no map without it |
 | `OPENBIRDING_API_URL` | **Unknown — ask rawcomposition** | Partially — see [§6](#6-what-works-without-openbirding) |
-| Resend / DeepL / NTFY / S3 | — | No. All guarded; skip them in dev |
+| Resend API key | — | **No, but a placeholder is required to boot** — see below |
+| DeepL / NTFY / S3 | — | No. All guarded; skip them in dev |
 
 ## 3. `backend/.env`
 
@@ -38,11 +42,16 @@ MAPBOX_SERVER_KEY=your_mapbox_token
 CORS_ORIGINS=http://localhost:5280
 FRONTEND_URL=http://localhost:5280
 OPENBIRDING_API_URL=            # ask upstream
+RESEND_API_KEY=re_dev_placeholder
 
 # Optional in dev — each is guarded, leave unset:
-# RESEND_API_KEY=   DEEPL_KEY=   NTFY_TOPIC=
+# DEEPL_KEY=   NTFY_TOPIC=
 # S3_KEY_ID=  S3_SECRET=  S3_ENDPOINT=  S3_BUCKET=  S3_PUBLIC_URL=
 ```
+
+**`RESEND_API_KEY` must be non-empty or the backend won't start.** `backend/lib/email.ts:10` runs `new Resend(process.env.RESEND_API_KEY)` at module load, outside the `IS_DEV` guard, and the constructor throws on a falsy key. The dev bypass covers *sending*, not construction. Any string works. (Making that client lazy is a small, genuinely useful upstream PR — see PORTING.md.)
+
+Node 24 works despite `.nvmrc` pinning 22 — `CLAUDE.md` says Node >= 22, and CI pins 22.x.
 
 **Leave `NODE_ENV` unset.** `IS_DEV` is `NODE_ENV !== "production"`, and that flag is what makes login work without an email provider (see §5).
 
@@ -118,14 +127,33 @@ Things that look like they need seeding but don't:
 
 ## 8. Seed a fixture trip
 
-Build this once; it's the fixture for every Wave 1 PR:
+Build this once; it's the fixture for every Wave 1 PR. Whichever route you take, the fixture needs:
 
-1. Create a trip in a region with good eBird coverage.
-2. Set a **start and end date** spanning 3+ days (the itinerary is derived from the date range — no dates, no days).
-3. Save **5+ hotspots** from the map.
-4. Add a **custom marker** or two (lodging, food) — needed to check marker icon rendering.
-5. Build **2–3 itinerary days**, at least one with **3+ stops** so travel legs are computed.
-6. Leave at least one saved hotspot **off** the itinerary — PR 3's dimmed-icon behavior needs the contrast.
+- A **start and end date** spanning 3+ days — the itinerary is derived from the range, so no dates means no days
+- **5+ saved hotspots** and a **custom marker** (marker icon rendering)
+- One day with **3+ stops** so travel legs exist, one day with **exactly 1 stop** (the no-total / no-route-link case), and one **empty** day
+- At least one saved hotspot **left off** the itinerary — PR 3's dimmed-icon behavior needs the contrast
+
+### Through the UI
+Requires `EBIRD_API_KEY` (hotspot search) and `MAPBOX_SERVER_KEY` (travel times). Sign up, create a trip, set dates, save hotspots from the map, add them to days, and click "Calculate travel time" on each leg.
+
+### Headless, without any third-party keys
+`POST /v1/trips` calls `getBounds()` against eBird, so trip creation needs the eBird key even though nothing else on the itinerary page does. To seed without it, log in over the API and insert the trip directly.
+
+Log in — the OTP is printed to the backend's stdout in dev, so it can be scraped:
+
+```bash
+curl -s -X POST localhost:5100/v1/auth/request-code \
+  -H 'Content-Type: application/json' -d '{"email":"dev@example.com"}'
+# read the 6-digit code out of the backend log, then:
+curl -s -X POST localhost:5100/v1/auth/verify-code \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"dev@example.com","code":"123456"}'   # → {"token":"…"}
+```
+
+Then insert a `trips` document and a matching `participants` document (`status: "active"`, `isOwner: true`, `listMode: "world"`) via `docker exec mongo-generic mongosh birdplan-dev`. Shape follows `backend/models/Trip.ts`: `_id`, `ownerId`, `name`, `region`, `bounds`, `startDate`/`endDate`, `startMonth`/`endMonth`, `hotspots[]`, `markers[]`, and `itinerary[].locations[]` where each location past the first carries `travel: { time, distance, method, locationId }` — `locationId` being the location it departs *from*.
+
+Hand-writing `travel` is what lets you exercise the travel-total UI with no Mapbox key at all.
 
 ## 9. Smoke test after setup
 
