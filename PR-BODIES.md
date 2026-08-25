@@ -52,6 +52,22 @@ Two notes:
 
 ---
 
+## `up/hotspot-modal-itinerary` — ready
+
+**Title:** `feat: add and remove itinerary days from the hotspot modal`
+
+Locations can currently only be scheduled from the itinerary page. This adds a day picker to the hotspot modal, so when you find a hotspot on the map you can put it on a day without navigating away.
+
+The trigger sits with Save / Directions / eBird, and reads "Itinerary" or "On 2 days" depending on state. Inside is a `DropdownMenuCheckboxItem` per day, labelled `Day 2 · Tue, Sep 8`. Checking schedules the hotspot, unchecking removes it — one control for both, which also means the menu doubles as an at-a-glance view of where the hotspot already sits. Shown only for saved hotspots, since the itinerary references `trip.hotspots` by id and an unsaved one would render as "Unknown Location".
+
+Notes:
+
+- Days are derived from the trip's date range, not stored, so I pulled that derivation out of `pages/[tripId]/itinerary.tsx` into `getTripDays()` in `lib/itinerary.ts` and used it in both places. The modal needs it to build the virtual day ids and to send `dayIds` so the server can densify.
+- Verified against a trip with a date range and an **empty** `itinerary` array — the case where every day id is virtual. Adding to `<tripId>-d1` correctly densifies all three days server-side and lands the location on day 2; removing clears it.
+- Both mutations go through `useTripMutation` with optimistic `updateCache` plus `reconcile` on the server's returned itinerary. Because the URL contains the day id, each day renders a small component with its own mutations rather than one mutation with a computed URL — happy to restructure if you'd rather see that done differently.
+
+---
+
 ## `up/saved-hotspot-affordances` — draft
 
 **Title:** `feat: distinguish saved hotspots and itinerary stops in the location list`
