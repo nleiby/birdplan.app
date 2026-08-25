@@ -6,7 +6,9 @@ Open with `gh pr create --repo rawcomposition/birdplan.app --base main --head nl
 
 ---
 
-## `up/dev-setup-fixes` — ready
+## `up/dev-setup-fixes` — not submitting
+
+> Dropped: placeholder env values work around both. The `VITE_OPENBIRDING_API_URL` half is still a real production-path bug if you ever want to revisit it.
 
 **Title:** `fix: run without OpenBirding and Resend configured`
 
@@ -34,7 +36,7 @@ One tradeoff worth your call: this moves a missing-key failure in production fro
 
 ---
 
-## `up/travel-totals` — ready
+## `up/travel-totals` — submitted as PR #59
 
 **Title:** `feat: show total travel time and a full-route directions link per itinerary day`
 
@@ -58,11 +60,13 @@ Two notes:
 
 Locations can currently only be scheduled from the itinerary page. This adds a day picker to the hotspot modal, so when you find a hotspot on the map you can put it on a day without navigating away.
 
-The trigger sits with Save / Directions / eBird, and reads "Itinerary" or "On 2 days" depending on state. Inside is a `DropdownMenuCheckboxItem` per day, labelled `Day 2 · Tue, Sep 8`. Checking schedules the hotspot, unchecking removes it — one control for both, which also means the menu doubles as an at-a-glance view of where the hotspot already sits. Shown only for saved hotspots, since the itinerary references `trip.hotspots` by id and an unsaved one would render as "Unknown Location".
+The trigger sits with Save / Directions / eBird, and reads "Itinerary" or "On 2 days" depending on state. Inside is a `DropdownMenuCheckboxItem` per day, labelled `Day 2 · Tue, Sep 8`. Checking schedules the hotspot, unchecking removes it — one control for both, which also means the menu doubles as an at-a-glance view of where the hotspot already sits, and the menu stays open so you can set several days in one go.
+
+The control only appears for a saved hotspot on a trip that has dates. Unsaved hotspots are excluded because the itinerary references `trip.hotspots` by id, so scheduling one would render as "Unknown Location"; a trip with no date range has no days to offer.
 
 Notes:
 
-- Days are derived from the trip's date range, not stored, so I pulled that derivation out of `pages/[tripId]/itinerary.tsx` into `getTripDays()` in `lib/itinerary.ts` and used it in both places. The modal needs it to build the virtual day ids and to send `dayIds` so the server can densify.
+- Days are derived from the trip's date range rather than stored, so I pulled that derivation out of `pages/[tripId]/itinerary.tsx` into `getTripDays()` in `lib/itinerary.ts` and used it in both places. The modal needs it to build the virtual day ids, to send `dayIds` so the server can densify, and to apply the optimistic cache update against a day that may not be persisted yet.
 - Verified against a trip with a date range and an **empty** `itinerary` array — the case where every day id is virtual. Adding to `<tripId>-d1` correctly densifies all three days server-side and lands the location on day 2; removing clears it.
 - Both mutations go through `useTripMutation` with optimistic `updateCache` plus `reconcile` on the server's returned itinerary. Because the URL contains the day id, each day renders a small component with its own mutations rather than one mutation with a computed URL — happy to restructure if you'd rather see that done differently.
 
@@ -90,7 +94,9 @@ Clicking a different map marker while a hotspot modal is open closes the modal i
 
 ---
 
-## `up/targets-csv-export` — draft, blocked
+## `up/targets-csv-export` — on hold
+
+> Deprioritized as a power-user feature; may never be built.
 
 **Title:** `feat: export the target list as CSV`
 
