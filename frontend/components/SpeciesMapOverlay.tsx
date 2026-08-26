@@ -3,6 +3,9 @@ import MapBox from "components/Mapbox";
 import MapOverlay from "components/MapOverlay";
 import { useTrip } from "hooks/useTrip";
 import { Button } from "components/ui/button";
+import MapButton from "components/MapButton";
+import Icon from "components/Icon";
+import { useMapPreferences } from "stores/mapPreferences";
 
 type Props = {
   onOutsideClick: (e: React.MouseEvent<HTMLElement>) => void;
@@ -12,6 +15,8 @@ type Props = {
 
 export default function SpeciesMapOverlay({ onOutsideClick, onHotspotClick, obsLayer }: Props) {
   const { trip, selectedSpecies, setSelectedSpecies } = useTrip();
+  const showPersonalLocations = useMapPreferences((state) => state.showPersonalLocations);
+  const setShowPersonalLocations = useMapPreferences((state) => state.setShowPersonalLocations);
   if (!selectedSpecies) return null;
 
   return (
@@ -32,6 +37,15 @@ export default function SpeciesMapOverlay({ onOutsideClick, onHotspotClick, obsL
         {trip?.bounds && (
           <MapBox key={trip._id} onHotspotClick={onHotspotClick} obsLayer={obsLayer} bounds={trip.bounds} />
         )}
+        <div className="absolute top-4 right-4 flex flex-col gap-3 z-10">
+          <MapButton
+            onClick={() => setShowPersonalLocations(!showPersonalLocations)}
+            tooltip={showPersonalLocations ? "Hide personal locations" : "Show personal locations"}
+            active={showPersonalLocations}
+          >
+            <Icon name="user" />
+          </MapButton>
+        </div>
       </div>
     </div>
   );
