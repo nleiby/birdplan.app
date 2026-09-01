@@ -10,6 +10,8 @@ import EmptyState from "components/EmptyState";
 import { Button } from "components/ui/button";
 import useTargetView from "hooks/useTargetView";
 import useMutualTargets from "hooks/useMutualTargets";
+import useSavedHotspotFrequency from "hooks/useSavedHotspotFrequency";
+import { isHardToFind } from "lib/coverage";
 import TargetViewToggle from "components/TargetViewToggle";
 import OptionsMenu from "components/OptionsMenu";
 import KebabMenuTrigger from "components/KebabMenuTrigger";
@@ -39,6 +41,7 @@ export default function TripTargets() {
   const [search, setSearch] = React.useState("");
   const [showStarred, setShowStarred] = React.useState(false);
   const [showMutual, setShowMutual] = React.useState(false);
+  const [showHardToFind, setShowHardToFind] = React.useState(false);
   const [page, setPage] = React.useState(1);
   const showCount = page * PAGE_SIZE;
 
@@ -84,12 +87,16 @@ export default function TripTargets() {
 
   const targetSpecies = regionData?.items?.filter((it) => !lifelist.includes(it.code)) || [];
 
+  const { bestFrequency, isLoading: loadingFrequency } = useSavedHotspotFrequency(showHardToFind);
+  const hasSavedHotspots = !!trip?.hotspots.length;
+
   // Filter targets
   const filteredTargets = targetSpecies?.filter(
     (it) =>
       it.name.toLowerCase().includes(search.toLowerCase()) &&
       (showStarred ? trip?.targetStars?.includes(it.code) : true) &&
-      (showMutual && isGroup ? isMutual(it.code) : true),
+      (showMutual && isGroup ? isMutual(it.code) : true) &&
+      (showHardToFind && !loadingFrequency ? isHardToFind(bestFrequency.get(it.code)) : true),
   );
 
   const truncatedTargets = filteredTargets?.slice(0, showCount);
@@ -148,6 +155,20 @@ export default function TripTargets() {
                             className={showMutual ? "text-success" : "text-muted-foreground"}
                           />
                           Mutual
+                        </FilterChip>
+                      )}
+                      {hasSavedHotspots && (
+                        <FilterChip
+                          tone="primary"
+                          active={showHardToFind}
+                          onClick={() => setShowHardToFind(!showHardToFind)}
+                          title="Show only targets reported on fewer than 5% of checklists at your best saved hotspot during your trip dates"
+                        >
+                          <Icon
+                            name="bullseye"
+                            className={showHardToFind ? "text-primary" : "text-muted-foreground"}
+                          />
+                          Hard to find
                         </FilterChip>
                       )}
                       <TargetViewToggle trip={trip} align="left" />
