@@ -243,23 +243,35 @@ export default function ItineraryDay({ day, dayIndex, isEditing, dayIds }: Props
           canEdit={isEditing}
         />
         {!!locations?.length && (
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            modifiers={[restrictToVerticalAxis]}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={locations.map((it) => it.id)}
-              strategy={verticalListSortingStrategy}
-              disabled={dragDisabled}
+          <>
+            {isEditing && (
+              <div className="mb-2">
+                <div className="sm:hidden">
+                  <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Route stops</div>
+                  <div className="mt-0.5 text-xs text-muted-foreground">Select the stops used for directions</div>
+                </div>
+                <div className="hidden justify-end pr-11 text-xs font-bold uppercase tracking-wide text-muted-foreground sm:flex">
+                  Route
+                </div>
+              </div>
+            )}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              modifiers={[restrictToVerticalAxis]}
+              onDragEnd={handleDragEnd}
             >
-              <ul className="flex flex-col">
-                {locations.map(({ locationId, type, id, excludeFromDirections }, index) => {
-                  const location = findLocation(locationId);
+              <SortableContext
+                items={locations.map((it) => it.id)}
+                strategy={verticalListSortingStrategy}
+                disabled={dragDisabled}
+              >
+                <ul className="flex flex-col">
+                  {locations.map(({ locationId, type, id, excludeFromDirections }, index) => {
+                    const location = findLocation(locationId);
 
-                  return (
-                    <React.Fragment key={id}>
+                    return (
+                      <React.Fragment key={id}>
                       {index !== 0 && !excludeFromDirections && (
                         <li>
                           <TravelTime isLoading={isLoading} isEditing={isEditing} dayId={day.id} id={id} />
@@ -323,44 +335,62 @@ export default function ItineraryDay({ day, dayIndex, isEditing, dayIds }: Props
                             </div>
                             {isEditing && (
                               <div className="flex self-center print:hidden">
-                                <label
-                                  className="flex items-center gap-1.5 whitespace-nowrap px-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground"
-                                  onClick={(event) => event.stopPropagation()}
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={!excludeFromDirections}
-                                    aria-label="Include in directions"
-                                    disabled={setRouteNodeMutation.isPending}
-                                    className="size-3.5 accent-primary disabled:cursor-not-allowed"
-                                    onChange={(event) =>
-                                      setRouteNodeMutation.mutate({
-                                        id,
-                                        excludeFromDirections: !event.target.checked,
-                                      })
+                                <Tooltip>
+                                  <TooltipTrigger
+                                    render={
+                                      <label
+                                        className="flex size-9 items-center justify-center cursor-pointer"
+                                        onClick={(event) => event.stopPropagation()}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={!excludeFromDirections}
+                                          aria-label={`Include ${location?.name || "location"} in directions`}
+                                          disabled={setRouteNodeMutation.isPending}
+                                          className="size-3.5 accent-primary disabled:cursor-not-allowed"
+                                          onChange={(event) =>
+                                            setRouteNodeMutation.mutate({
+                                              id,
+                                              excludeFromDirections: !event.target.checked,
+                                            })
+                                          }
+                                        />
+                                      </label>
                                     }
                                   />
-                                  Include in directions
-                                </label>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  aria-label="Remove location"
-                                  onClick={() => removeLocationMutation.mutate({ id })}
-                                >
-                                  <X className="size-4" />
-                                </Button>
+                                  <TooltipContent>
+                                    {excludeFromDirections
+                                      ? "Include in directions and travel-time estimates"
+                                      : "Included in directions and travel-time estimates"}
+                                  </TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                  <TooltipTrigger
+                                    render={
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        aria-label="Remove from itinerary"
+                                        onClick={() => removeLocationMutation.mutate({ id })}
+                                      >
+                                        <X className="size-4" />
+                                      </Button>
+                                    }
+                                  />
+                                  <TooltipContent>Remove from itinerary</TooltipContent>
+                                </Tooltip>
                               </div>
                             )}
                           </>
                         )}
                       </SortableLocationRow>
-                    </React.Fragment>
-                  );
-                })}
-              </ul>
-            </SortableContext>
-          </DndContext>
+                      </React.Fragment>
+                    );
+                  })}
+                </ul>
+              </SortableContext>
+            </DndContext>
+          </>
         )}
         {isEditing && (
           <Combobox<AddOption>
