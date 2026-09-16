@@ -34,41 +34,20 @@ export const updateDayTravelTimes = async (trip: Trip, day: Day): Promise<Day> =
   const otherTravelData = await getAllTravelData(trip.itinerary, day);
 
   try {
-    const results: ItineraryLocation[] = [];
-    let fromLocation: ItineraryLocation | undefined;
-
-    for (const location of day.locations || []) {
-      const { travel, ...it } = location;
-
-      // Approximate/off-road coordinates remain itinerary stops, but must never become routing nodes.
-      if (location.excludeFromDirections) {
-        results.push(it);
-        continue;
-      }
-
-      if (!fromLocation) {
-        results.push(it);
-        fromLocation = location;
-        continue;
-      }
+    const promises = day.locations?.map(async ({ travel, ...it }, index) => {
+      if (it.excludeFromDirections) return it;
+      const fromLocation = day.locations.slice(0, index).reverse().find((location) => !location.excludeFromDirections);
+      if (!fromLocation) return it;
 
       const fromId = fromLocation.locationId;
       const toId = it.locationId;
       const method = travel?.method || defaultMethod || "driving";
-      if (!fromId || !toId || !method) {
-        results.push(it);
-        fromLocation = location;
-        continue;
-      }
+      if (!fromId || !toId || !method) return it;
 
-      if (travel?.isDeleted && travel.locationId === fromId) {
-        results.push({ ...it, travel });
-        fromLocation = location;
-        continue;
-      }
+      if (travel?.isDeleted && travel.locationId === fromId) return { ...it, travel };
 
       if (fromLocation.locationId == it.locationId) {
-        results.push({
+        return {
           ...it,
           travel: {
             distance: 0,
@@ -76,14 +55,12 @@ export const updateDayTravelTimes = async (trip: Trip, day: Day): Promise<Day> =
             method,
             locationId: fromId,
           },
-        });
-        fromLocation = location;
-        continue;
+        };
       }
 
       const otherData = otherTravelData.find((d) => d.fromId == fromId && d.toId == toId && d.method == method);
       if (otherData) {
-        results.push({
+        return {
           ...it,
           travel: {
             distance: otherData.distance,
@@ -91,18 +68,12 @@ export const updateDayTravelTimes = async (trip: Trip, day: Day): Promise<Day> =
             method,
             locationId: fromId,
           },
-        });
-        fromLocation = location;
-        continue;
+        };
       }
 
       const from = trip.hotspots?.find((h) => h.id === fromId) || trip.markers?.find((m) => m.id === fromId);
       const to = trip.hotspots?.find((h) => h.id === toId) || trip.markers?.find((m) => m.id === toId);
-      if (!from || !to) {
-        results.push(it);
-        fromLocation = location;
-        continue;
-      }
+      if (!from || !to) return it;
 
       console.log(`Calculating travel time from ${from.name || "marker"} to ${to.name || "marker"}`);
       const { lat: lat1, lng: lng1 } = from;
@@ -117,12 +88,12 @@ export const updateDayTravelTimes = async (trip: Trip, day: Day): Promise<Day> =
           method,
           locationId: fromId,
         };
-        results.push({ ...it, travel: travelData });
+        return { ...it, travel: travelData };
       } catch (e) {
-        results.push(it);
+        return it;
       }
-      fromLocation = location;
-    }
+    });
+    const results = await Promise.all(promises || []);
     return { ...day, locations: results };
   } catch (error) {
     console.error("Error updating travel times:", error);

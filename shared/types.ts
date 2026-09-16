@@ -459,7 +459,6 @@ export type ItineraryLocation = {
   id: string;
   type: "hotspot" | "marker";
   locationId: string;
-  /** Keeps the stop on the itinerary while omitting it from route links and travel estimates. */
   excludeFromDirections?: boolean;
   travel?: {
     method: "walking" | "driving" | "cycling";

@@ -236,10 +236,11 @@ itinerary.patch("/:dayId/set-route-node", async (c) => {
       ),
     }
   );
-  const updatedItinerary = trip.itinerary!.map((item) => (item.id === dayId ? updatedDay : item));
-
-  await Trip.updateOne({ _id: tripId }, { $set: { itinerary: updatedItinerary } });
-  return c.json({ itinerary: updatedItinerary });
+  await Trip.updateOne(
+    { _id: tripId, "itinerary.id": dayId },
+    { $set: { "itinerary.$.locations": updatedDay.locations || [] } }
+  );
+  return c.json({ day: updatedDay });
 });
 
 itinerary.patch("/:dayId/set-notes", async (c) => {

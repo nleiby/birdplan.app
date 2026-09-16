@@ -94,7 +94,7 @@ export default function ItineraryDay({ day, dayIndex, isEditing, dayIds }: Props
 
   const setRouteNodeMutation = useTripMutation<
     { id: string; excludeFromDirections: boolean },
-    { itinerary: Day[] }
+    { day: Day }
   >({
     url: `/trips/${trip?._id}/itinerary/${day.id}/set-route-node`,
     method: "PATCH",
@@ -114,7 +114,10 @@ export default function ItineraryDay({ day, dayIndex, isEditing, dayIds }: Props
             : it
         ) || [],
     }),
-    reconcile: (old, response) => ({ ...old, itinerary: response.itinerary }),
+    reconcile: (old, response) => ({
+      ...old,
+      itinerary: old.itinerary?.map((it) => (it.id === response.day.id ? response.day : it)) || [],
+    }),
   });
 
   const setNotesMutation = useTripMutation<{ notes: string; dayIds: string[] }, { itinerary: Day[] }>({
@@ -328,7 +331,8 @@ export default function ItineraryDay({ day, dayIndex, isEditing, dayIds }: Props
                                     type="checkbox"
                                     checked={!excludeFromDirections}
                                     aria-label="Include in directions"
-                                    className="size-3.5 accent-primary"
+                                    disabled={setRouteNodeMutation.isPending}
+                                    className="size-3.5 accent-primary disabled:cursor-not-allowed"
                                     onChange={(event) =>
                                       setRouteNodeMutation.mutate({
                                         id,
