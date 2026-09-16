@@ -17,7 +17,7 @@ import MarkerWithIcon from "components/MarkerWithIcon";
 import TravelTime from "components/TravelTime";
 import InputNotesSimple from "components/InputNotesSimple";
 import Icon from "components/Icon";
-import { GripVertical, Plus, Route, X } from "lucide-react";
+import { GripVertical, Plus, Route, RouteOff, X } from "lucide-react";
 import useTripMutation from "hooks/useTripMutation";
 import { useMutationState } from "@tanstack/react-query";
 import { Day } from "@birdplan/shared";
@@ -29,6 +29,7 @@ import { closestCenter, DndContext, DragEndEvent, PointerSensor, useSensor, useS
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { Tooltip, TooltipContent, TooltipTrigger } from "components/ui/tooltip";
 
 type PropsT = {
   day: Day;
@@ -91,6 +92,31 @@ export default function ItineraryDay({ day, dayIndex, isEditing, dayIds }: Props
     }),
   });
 
+  const setRouteNodeMutation = useTripMutation<
+    { id: string; excludeFromDirections: boolean },
+    { itinerary: Day[] }
+  >({
+    url: `/trips/${trip?._id}/itinerary/${day.id}/set-route-node`,
+    method: "PATCH",
+    updateCache: (old, input) => ({
+      ...old,
+      itinerary:
+        old.itinerary?.map((it) =>
+          it.id === day.id
+            ? {
+                ...it,
+                locations: it.locations?.map((location) =>
+                  location.id === input.id
+                    ? { ...location, excludeFromDirections: input.excludeFromDirections, travel: undefined }
+                    : location
+                ),
+              }
+            : it
+        ) || [],
+    }),
+    reconcile: (old, response) => ({ ...old, itinerary: response.itinerary }),
+  });
+
   const setNotesMutation = useTripMutation<{ notes: string; dayIds: string[] }, { itinerary: Day[] }>({
     url: `/trips/${trip?._id}/itinerary/${day.id}/set-notes`,
     method: "PATCH",
@@ -147,7 +173,7 @@ export default function ItineraryDay({ day, dayIndex, isEditing, dayIds }: Props
     isAddingLocation ||
     isFetchingTrip;
 
-  const isStructuralPending = isAddingLocation || removeLocationMutation.isPending;
+  const isStructuralPending = isAddingLocation || removeLocationMutation.isPending || setRouteNodeMutation.isPending;
   const dragDisabled = !isEditing || isStructuralPending;
 
   const date = trip?.startDate ? dayjs(trip.startDate).add(dayIndex, "day").format("dddd, MMMM D") : "";
@@ -165,7 +191,7 @@ export default function ItineraryDay({ day, dayIndex, isEditing, dayIds }: Props
   const methods = new Set(travelLegs.map((it) => it.method));
   const routeMethod = methods.size === 1 ? [...methods][0] : "driving";
   const routeUrl = getGoogleRouteUrl(
-    locations.flatMap(({ locationId }) => {
+    locations.filter((location) => !location.excludeFromDirections).flatMap(({ locationId }) => {
       const location = findLocation(locationId);
       return location ? [{ lat: location.lat, lng: location.lng }] : [];
     }),
@@ -226,12 +252,12 @@ export default function ItineraryDay({ day, dayIndex, isEditing, dayIds }: Props
               disabled={dragDisabled}
             >
               <ul className="flex flex-col">
-                {locations.map(({ locationId, type, id }, index) => {
+                {locations.map(({ locationId, type, id, excludeFromDirections }, index) => {
                   const location = findLocation(locationId);
 
                   return (
                     <React.Fragment key={id}>
-                      {index !== 0 && (
+                      {index !== 0 && !excludeFromDirections && (
                         <li>
                           <TravelTime isLoading={isLoading} isEditing={isEditing} dayId={day.id} id={id} />
                         </li>
@@ -274,8 +300,16 @@ export default function ItineraryDay({ day, dayIndex, isEditing, dayIds }: Props
                                 <Icon name="warning" className="text-destructive text-[22px]" />
                               )}
                               <span className="min-w-0">
-                                <span className="block truncate font-medium mt-[2px]">
-                                  {location?.name || "Unknown Location"}
+                                <span className="flex items-center gap-1.5 truncate font-medium mt-[2px]">
+                                  <span className="truncate">{location?.name || "Unknown Location"}</span>
+                                  {excludeFromDirections && !isEditing && (
+                                    <Tooltip>
+                                      <TooltipTrigger
+                                        render={<RouteOff className="size-3.5 shrink-0 text-muted-foreground" aria-label="Not included in directions" />}
+                                      />
+                                      <TooltipContent>Not included in directions</TooltipContent>
+                                    </Tooltip>
+                                  )}
                                 </span>
                                 {location?.notes && (
                                   <span className="text-secondary-foreground text-sm relative whitespace-pre-wrap">
@@ -285,15 +319,34 @@ export default function ItineraryDay({ day, dayIndex, isEditing, dayIds }: Props
                               </span>
                             </div>
                             {isEditing && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                aria-label="Remove location"
-                                className="self-center print:hidden"
-                                onClick={() => removeLocationMutation.mutate({ id })}
-                              >
-                                <X className="size-4" />
-                              </Button>
+                              <div className="flex self-center print:hidden">
+                                <label
+                                  className="flex items-center gap-1.5 whitespace-nowrap px-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground"
+                                  onClick={(event) => event.stopPropagation()}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={!excludeFromDirections}
+                                    aria-label="Include in directions"
+                                    className="size-3.5 accent-primary"
+                                    onChange={(event) =>
+                                      setRouteNodeMutation.mutate({
+                                        id,
+                                        excludeFromDirections: !event.target.checked,
+                                      })
+                                    }
+                                  />
+                                  Include in directions
+                                </label>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  aria-label="Remove location"
+                                  onClick={() => removeLocationMutation.mutate({ id })}
+                                >
+                                  <X className="size-4" />
+                                </Button>
+                              </div>
                             )}
                           </>
                         )}

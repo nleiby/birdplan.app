@@ -29,24 +29,46 @@ export const updateDayTravelTimes = async (trip: Trip, day: Day): Promise<Day> =
   if (!trip) throw new Error("Trip is required for updating travel times");
   if (!day) throw new Error("Day is required for updating travel times");
 
-  const existingMethods = day.locations?.map((it) => it.travel?.method || null) || [];
+  const existingMethods = day.locations?.filter((it) => !it.excludeFromDirections).map((it) => it.travel?.method || null) || [];
   const defaultMethod = mostFrequentValue(existingMethods) as "walking" | "driving" | "cycling" | null;
   const otherTravelData = await getAllTravelData(trip.itinerary, day);
 
   try {
-    const promises = day.locations?.map(async ({ travel, ...it }, index) => {
-      const fromLocation = day.locations[index - 1];
-      if (!fromLocation) return it;
+    const results: ItineraryLocation[] = [];
+    let fromLocation: ItineraryLocation | undefined;
+
+    for (const location of day.locations || []) {
+      const { travel, ...it } = location;
+
+      // Approximate/off-road coordinates remain itinerary stops, but must never become routing nodes.
+      if (location.excludeFromDirections) {
+        results.push(it);
+        continue;
+      }
+
+      if (!fromLocation) {
+        results.push(it);
+        fromLocation = location;
+        continue;
+      }
 
       const fromId = fromLocation.locationId;
       const toId = it.locationId;
       const method = travel?.method || defaultMethod || "driving";
-      if (!fromId || !toId || !method) return it;
+      if (!fromId || !toId || !method) {
+        results.push(it);
+        fromLocation = location;
+        continue;
+      }
 
-      if (travel?.isDeleted && travel.locationId === fromId) return { ...it, travel };
+      if (travel?.isDeleted && travel.locationId === fromId) {
+        results.push({ ...it, travel });
+        fromLocation = location;
+        continue;
+      }
 
       if (fromLocation.locationId == it.locationId) {
-        return {
+        results.push({
           ...it,
           travel: {
             distance: 0,
@@ -54,12 +76,14 @@ export const updateDayTravelTimes = async (trip: Trip, day: Day): Promise<Day> =
             method,
             locationId: fromId,
           },
-        };
+        });
+        fromLocation = location;
+        continue;
       }
 
       const otherData = otherTravelData.find((d) => d.fromId == fromId && d.toId == toId && d.method == method);
       if (otherData) {
-        return {
+        results.push({
           ...it,
           travel: {
             distance: otherData.distance,
@@ -67,12 +91,18 @@ export const updateDayTravelTimes = async (trip: Trip, day: Day): Promise<Day> =
             method,
             locationId: fromId,
           },
-        };
+        });
+        fromLocation = location;
+        continue;
       }
 
       const from = trip.hotspots?.find((h) => h.id === fromId) || trip.markers?.find((m) => m.id === fromId);
       const to = trip.hotspots?.find((h) => h.id === toId) || trip.markers?.find((m) => m.id === toId);
-      if (!from || !to) return it;
+      if (!from || !to) {
+        results.push(it);
+        fromLocation = location;
+        continue;
+      }
 
       console.log(`Calculating travel time from ${from.name || "marker"} to ${to.name || "marker"}`);
       const { lat: lat1, lng: lng1 } = from;
@@ -87,12 +117,12 @@ export const updateDayTravelTimes = async (trip: Trip, day: Day): Promise<Day> =
           method,
           locationId: fromId,
         };
-        return { ...it, travel: travelData };
+        results.push({ ...it, travel: travelData });
       } catch (e) {
-        return it;
+        results.push(it);
       }
-    });
-    const results = await Promise.all(promises || []);
+      fromLocation = location;
+    }
     return { ...day, locations: results };
   } catch (error) {
     console.error("Error updating travel times:", error);
@@ -138,7 +168,8 @@ const getAllTravelData = async (itinerary?: Day[], updatedDay?: Day): Promise<Tr
 export const removeInvalidTravelData = (locations: ItineraryLocation[]): ItineraryLocation[] => {
   return (
     locations?.map(({ travel, ...it }, index) => {
-      const prev = index > 0 ? locations[index - 1] : null;
+      if (it.excludeFromDirections) return it;
+      const prev = locations.slice(0, index).reverse().find((location) => !location.excludeFromDirections);
       if (!prev || !travel) return it;
       if (travel.locationId !== prev.locationId) return it;
       return { ...it, travel };

@@ -11,6 +11,7 @@ import type {
   RemoveLocationInput,
   AddLocationInput,
   CalcTravelTimeInput,
+  SetRouteNodeInput,
 } from "@birdplan/shared";
 
 const itinerary = new Hono();
@@ -198,6 +199,47 @@ itinerary.patch("/:dayId/remove-travel-time", async (c) => {
   );
 
   return c.json({});
+});
+
+itinerary.patch("/:dayId/set-route-node", async (c) => {
+  const session = await authenticate(c);
+
+  const tripId = c.req.param("tripId");
+  const dayId = c.req.param("dayId");
+  if (!tripId) throw new HTTPException(400, { message: "Trip ID is required" });
+  if (!dayId) throw new HTTPException(400, { message: "Day ID is required" });
+
+  const data = await c.req.json<SetRouteNodeInput>();
+
+  await connect();
+  const [trip, isEditor] = await Promise.all([
+    Trip.findById(tripId).lean(),
+    isTripEditor(tripId, session.userId),
+  ]);
+  if (!trip) throw new HTTPException(404, { message: "Trip not found" });
+  if (!isEditor) throw new HTTPException(403, { message: "Forbidden" });
+
+  const day = trip.itinerary?.find((it) => it.id === dayId);
+  if (!day) throw new HTTPException(404, { message: "Day not found" });
+  if (!day.locations.some((location) => location.id === data.id)) {
+    throw new HTTPException(404, { message: "Itinerary location not found" });
+  }
+
+  const updatedDay = await updateDayTravelTimes(
+    trip,
+    {
+      ...day,
+      locations: day.locations.map((location) =>
+        location.id === data.id
+          ? { ...location, excludeFromDirections: data.excludeFromDirections }
+          : location
+      ),
+    }
+  );
+  const updatedItinerary = trip.itinerary!.map((item) => (item.id === dayId ? updatedDay : item));
+
+  await Trip.updateOne({ _id: tripId }, { $set: { itinerary: updatedItinerary } });
+  return c.json({ itinerary: updatedItinerary });
 });
 
 itinerary.patch("/:dayId/set-notes", async (c) => {

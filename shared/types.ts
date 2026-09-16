@@ -71,12 +71,7 @@ export type CustomMarker = {
 export type Day = {
   id: string;
   notes?: string;
-  locations: {
-    travel?: TravelData;
-    locationId: string;
-    type: "hotspot" | "marker";
-    id: string;
-  }[];
+  locations: ItineraryLocation[];
 };
 
 export type TravelData = {
@@ -455,10 +450,17 @@ export type CalcTravelTimeInput = {
   method: "walking" | "driving" | "cycling";
 };
 
+export type SetRouteNodeInput = {
+  id: string;
+  excludeFromDirections: boolean;
+};
+
 export type ItineraryLocation = {
   id: string;
   type: "hotspot" | "marker";
   locationId: string;
+  /** Keeps the stop on the itinerary while omitting it from route links and travel estimates. */
+  excludeFromDirections?: boolean;
   travel?: {
     method: "walking" | "driving" | "cycling";
     time: number;

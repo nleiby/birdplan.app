@@ -39,6 +39,7 @@ const fields: Record<
           id: String,
           type: { type: String }, // Explicit because "type" is a reserved word in Mongoose
           locationId: String,
+          excludeFromDirections: Boolean,
           travel: {
             _id: false,
             time: Number,

@@ -23,7 +23,10 @@ export default function TravelTime({ isEditing, dayId, id, isLoading }: Props) {
   const { trip } = useTrip();
   const locations = trip?.itinerary?.find((day) => day.id === dayId)?.locations || [];
   const thisLocationIndex = locations.findIndex((it) => it.id === id);
-  const location1 = locations[thisLocationIndex - 1];
+  const location1 = locations
+    .slice(0, thisLocationIndex)
+    .reverse()
+    .find((location) => !location.excludeFromDirections);
   const location2 = locations[thisLocationIndex]; // current location
   const travelData = location2?.travel;
 
